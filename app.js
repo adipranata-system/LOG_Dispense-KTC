@@ -10,7 +10,7 @@
 // 1. GLOBAL CONFIGURATION & STATE
 // ==========================================
 // GANTI DENGAN URL WEB APP DEPLOYMENT GOOGLE APPS SCRIPT ANDA JIKA BERBEDA
-const API_URL = "https://script.google.com/macros/s/AKfycbw9Q6-1k2jL5pL7N8vF0_X9zB4qW2eR1tY7uI3oP5a/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbx2JMKLEla_q7_EkeyZFtx4sx6HvZ6VObqY4S8DQCG0pNJsCqv3hHdwBpWB7z8fkeZkNg/exec";
 
 let currentUser = "";
 let currentRole = "ADMIN";
