@@ -254,6 +254,10 @@
             <i class="fa-solid fa-shuffle"></i>
             <span>Internal Transfer & Dispatch</span>
           </button>
+          <button onclick="switchTab('tab-return')" id="nav-return" class="nav-btn px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 font-semibold flex items-center gap-2 transition-all">
+            <i class="fa-solid fa-rotate-left"></i>
+            <span>Return & Reversal Order</span>
+          </button>
           <button onclick="switchTab('tab-balance')" id="nav-balance" class="nav-btn px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 font-semibold flex items-center gap-2 transition-all">
             <i class="fa-solid fa-clipboard-check"></i>
             <span>Stock Balance & Reconciliation</span>
@@ -1083,6 +1087,246 @@
                   </tr>
                 </thead>
                 <tbody id="tableRecentMutasi" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 5: RETURN & REVERSAL ORDER (CENTRAL CORRECTION CONTROL) -->
+      <section id="tab-return" class="tab-pane hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          
+          <!-- Return Input Form Left -->
+          <div class="lg:col-span-5 bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-200/80">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-3.5">
+              <div>
+                <h2 class="text-sm sm:text-base font-extrabold text-slate-900">Return & Reversal Management</h2>
+                <p class="text-[11px] text-slate-400">Ledger-balanced correction for Fleet Dispense or Vendor Inbound</p>
+              </div>
+              <span class="w-8 h-8 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center text-sm shadow-sm">
+                <i class="fa-solid fa-rotate-left"></i>
+              </span>
+            </div>
+
+            <!-- Return Category Switch -->
+            <div class="mb-3.5 p-2.5 bg-slate-50 border border-slate-200 rounded-2xl">
+              <label class="form-label-sm text-slate-700 mb-1.5">Reversal Category:</label>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <label class="flex items-center gap-2 p-2.5 border rounded-xl cursor-pointer bg-white hover:border-teal-500 transition-colors">
+                  <input type="radio" name="retTypeOption" value="FLEET" checked onchange="toggleReturnType('FLEET')" class="text-teal-600 focus:ring-teal-500">
+                  <span class="font-bold text-slate-800">Fleet Unit Reversal</span>
+                </label>
+                <label class="flex items-center gap-2 p-2.5 border rounded-xl cursor-pointer bg-white hover:border-teal-500 transition-colors">
+                  <input type="radio" name="retTypeOption" value="VENDOR" onchange="toggleReturnType('VENDOR')" class="text-teal-600 focus:ring-teal-500">
+                  <span class="font-bold text-slate-800">Vendor Retur / DO In</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Dynamic Category Banner -->
+            <div id="bannerReturnMode" class="mb-3 p-2.5 bg-teal-50/70 border border-teal-200 rounded-2xl text-[11px] text-teal-950 flex items-start gap-2">
+              <i class="fa-solid fa-circle-info text-teal-700 mt-0.5"></i>
+              <div id="bannerReturnModeTxt" class="leading-relaxed">
+                <b>Fleet Dispense Reversal:</b> Returning lubricant to tank from heavy equipment. Storage stock will <b>increase</b> and fleet consumption will be <b>deducted</b>.
+              </div>
+            </div>
+
+            <form id="formReturn" onsubmit="event.preventDefault(); submitReturnData();" class="space-y-3 text-xs">
+              
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label class="form-label-sm">Return Date <span class="text-rose-500">*</span></label>
+                  <input type="date" id="retDate" required class="form-input-sm">
+                </div>
+                <div>
+                  <label id="lblRetStorage" class="form-label-sm">Receiving Storage (Target Tank) <span class="text-rose-500">*</span></label>
+                  <select id="retStorage" required class="form-input-sm font-semibold">
+                    <option value="">-- Select Storage --</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- FLEET SPECIFIC FIELDS (VISIBLE WHEN CATEGORY === FLEET) -->
+              <div id="panelReturnFleet" class="space-y-3">
+                <!-- Combobox Unit ID -->
+                <div class="relative">
+                  <label class="form-label-sm">Fleet Equipment ID (Being Corrected) <span class="text-rose-500">*</span></label>
+                  <input type="hidden" id="retUnit">
+                  <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 text-slate-400">
+                      <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                    </span>
+                    <input type="text" id="retUnitSearchInput" autocomplete="off" placeholder="Search Unit ID / Model... (↑ ↓ Enter)"
+                      onfocus="openRetUnitDropdown()" oninput="filterRetUnitDropdown(this.value)" onkeydown="handleRetUnitKeydown(event)"
+                      class="form-input-sm pl-8 pr-7 font-semibold text-slate-800 font-mono">
+                    <button type="button" onclick="clearRetUnitSelection()" id="btnClearRetUnit" class="hidden absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400 hover:text-slate-600">
+                      <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                  </div>
+                  <div id="retUnitDropdownList" class="hidden absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100"></div>
+                  <div class="flex justify-between mt-0.5 text-[10px] text-slate-400 px-1 truncate">
+                    <span class="truncate">Model: <b id="labelRetUnitModel" class="text-slate-700">-</b></span>
+                    <span class="truncate ml-2">Desc: <b id="labelRetUnitDesc" class="text-slate-700">-</b></span>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label class="form-label-sm flex items-center justify-between">
+                      <span>Charge Site</span>
+                      <span class="text-[9px] text-slate-400"><i class="fa-solid fa-lock text-[8px] mr-0.5"></i>Auto</span>
+                    </label>
+                    <input type="text" id="retChargeSite" readonly value="-" class="form-input-sm bg-slate-100 font-black text-blue-700 cursor-not-allowed uppercase font-mono">
+                  </div>
+                  <div>
+                    <label class="form-label-sm flex items-center justify-between">
+                      <span>Unit HM</span>
+                      <span class="text-[9px] text-teal-700 font-normal">Flexible</span>
+                    </label>
+                    <input type="number" step="0.1" id="retHM" value="0" placeholder="0" class="form-input-sm font-mono">
+                  </div>
+                </div>
+              </div>
+
+              <!-- VENDOR SPECIFIC FIELDS (VISIBLE WHEN CATEGORY === VENDOR) -->
+              <div id="panelReturnVendor" class="hidden space-y-3">
+                <div>
+                  <label class="form-label-sm">Reference DO / Waybill No. <span class="text-rose-500">*</span></label>
+                  <input type="text" id="retNoDok" placeholder="e.g. DO-PTM-2026-9021" class="form-input-sm uppercase font-semibold font-mono">
+                </div>
+
+                <!-- Combobox Vendor Supplier -->
+                <div class="relative">
+                  <label class="form-label-sm">Supplier / Vendor Origin <span class="text-rose-500">*</span></label>
+                  <input type="hidden" id="retSupplierCode">
+                  <input type="hidden" id="retSupplierName">
+                  <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 text-slate-400">
+                      <i class="fa-solid fa-building-user text-xs"></i>
+                    </span>
+                    <input type="text" id="retSupplierSearchInput" autocomplete="off" placeholder="Select Vendor from Master m_supplier... (↑ ↓ Enter)"
+                      onfocus="openRetSupplierDropdown()" oninput="filterRetSupplierDropdown(this.value)" onkeydown="handleRetSupplierKeydown(event)"
+                      class="form-input-sm pl-8 pr-7 font-semibold text-slate-800">
+                    <button type="button" onclick="clearRetSupplierSelection()" id="btnClearRetSupplier" class="hidden absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400 hover:text-slate-600">
+                      <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                  </div>
+                  <div id="retSupplierDropdownList" class="hidden absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100"></div>
+                  <div class="mt-0.5 text-[10px] px-1 text-slate-400 truncate">
+                    <span id="lblRetSelectedSupplierDesc">Verified Master: <b>-</b></span>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="form-label-sm">Unit Price (IDR/L)</label>
+                  <input type="text" inputmode="decimal" id="retHarga" placeholder="0.00" class="form-input-sm font-mono">
+                </div>
+              </div>
+
+              <!-- LUBRICANT PRODUCT SELECTION (SHARED) -->
+              <div class="relative">
+                <label class="form-label-sm">Lubricant Item / Part Number <span class="text-rose-500">*</span></label>
+                <input type="hidden" id="retPart" required>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 text-slate-400">
+                    <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                  </span>
+                  <input type="text" id="retPartSearchInput" autocomplete="off" placeholder="Search Part Number / Name... (↑ ↓ Enter)"
+                    onfocus="openRetPartDropdown()" oninput="filterRetPartDropdown(this.value)" onkeydown="handleRetPartKeydown(event)"
+                    class="form-input-sm pl-8 pr-7 font-semibold text-slate-800">
+                  <button type="button" onclick="clearRetPartSelection()" id="btnClearRetPart" class="hidden absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                  </button>
+                </div>
+                <div id="retPartDropdownList" class="hidden absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100"></div>
+                <div class="flex justify-between items-center mt-0.5 text-[10px] px-1">
+                  <span id="labelRetPartDesc" class="text-slate-500 font-medium truncate max-w-[200px]">-</span>
+                  <span id="labelRetLiveStock" class="font-bold text-slate-500">Available: <span class="text-teal-700 font-mono">0 L</span></span>
+                </div>
+              </div>
+
+              <!-- VOLUME & OPERATOR -->
+              <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label class="form-label-sm">Return Volume (L) <span class="text-rose-500">*</span></label>
+                  <input type="number" step="1" min="1" id="retQty" required placeholder="0" class="form-input-sm font-mono font-bold text-slate-900">
+                </div>
+                <div>
+                  <label class="form-label-sm">Executor / Technician <span class="text-rose-500">*</span></label>
+                  <input type="text" id="retPetugas" required placeholder="Mandatory: Name" class="form-input-sm uppercase font-semibold">
+                </div>
+              </div>
+
+              <!-- MANDATORY REASON WITH HELPFUL PLACEHOLDERS -->
+              <div>
+                <label class="form-label-sm">Mandatory Correction Reason <span class="text-rose-500">*</span></label>
+                <textarea id="retAlasan" rows="2" required placeholder="e.g. Salah ketik volume: Seharusnya 10 L terinput 20 L / Pengembalian sisa oli servis..." class="form-input-sm"></textarea>
+                <p class="text-[10px] text-slate-400 mt-1 italic">
+                  ℹ️ Provide a transparent justification for internal logistics audit verification.
+                </p>
+              </div>
+
+              <button type="submit" id="btnSubmitReturn" class="w-full py-2.5 bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white font-bold rounded-xl shadow-md shadow-teal-600/25 transition-all flex items-center justify-center gap-2 mt-2 text-xs active:scale-[0.99]">
+                <i class="fa-solid fa-rotate-left"></i>
+                <span id="lblBtnSubmitReturn">↩️ Commit Fleet Dispense Reversal</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- Return History Table Right -->
+          <div class="lg:col-span-7 bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-200/80 flex flex-col justify-between">
+            <div>
+              <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5 mb-2.5">
+                <div>
+                  <h3 class="text-sm sm:text-base font-extrabold text-slate-900">Return & Reversal Audit Log</h3>
+                  <p class="text-[10px] text-slate-400">Chronological audit trail of inventory balancing entries</p>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <button onclick="downloadCSV('RETURN')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
+                    <i class="fa-solid fa-file-excel text-emerald-600"></i>
+                    <span>Export CSV</span>
+                  </button>
+                  <button onclick="fetchRecentReturns()" title="Refresh return data" class="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm">
+                    <i class="fa-solid fa-rotate text-[11px]"></i>
+                    <span>Refresh</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 mb-2.5">
+                <div class="sm:col-span-8 relative">
+                  <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 text-slate-400 text-xs">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                  </span>
+                  <input type="text" id="searchFilterReturn" oninput="filterRecentReturnTable()" placeholder="Search unit ID, DO, reason, or part..." class="form-input-sm pl-8">
+                </div>
+                <div class="sm:col-span-4">
+                  <select id="typeFilterReturn" onchange="filterRecentReturnTable()" class="form-input-sm font-semibold">
+                    <option value="">All Reversal Categories</option>
+                    <option value="FLEET_RETURN">Fleet Dispense Reversals</option>
+                    <option value="VENDOR_RETURN">Vendor Inbound Reversals</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Table Data Return -->
+            <div class="overflow-x-auto max-h-[480px] overflow-y-auto border border-slate-100 rounded-2xl flex-1">
+              <table class="w-full text-left text-xs min-w-[650px]">
+                <thead class="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[10px] sticky top-0 z-10 shadow-sm">
+                  <tr>
+                    <th class="py-2.5 px-3 bg-slate-50 whitespace-nowrap">Date</th>
+                    <th class="py-2.5 px-3 bg-slate-50 whitespace-nowrap">Category</th>
+                    <th class="py-2.5 px-3 bg-slate-50 whitespace-nowrap">Reference ID</th>
+                    <th class="py-2.5 px-3 bg-slate-50 whitespace-nowrap">Storage</th>
+                    <th class="py-2.5 px-3 bg-slate-50">Lubricant Item</th>
+                    <th class="py-2.5 px-3 bg-slate-50 text-right whitespace-nowrap">Reversed Qty</th>
+                    <th class="py-2.5 px-3 bg-slate-50">Justification & Executor</th>
+                  </tr>
+                </thead>
+                <tbody id="tableRecentReturns" class="divide-y divide-slate-100"></tbody>
               </table>
             </div>
           </div>
