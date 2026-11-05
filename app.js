@@ -2824,9 +2824,20 @@ async function executeDownloadCSV() {
     return;
   }
 
+  // ============================================================
+  // PENGHAPUSAN KOLOM "NO" (KOLOM A) PADA SELURUH EKSPOR CSV
+  // ============================================================
+  let exportHeaders = res.headers || [];
+  let exportRows = res.rows || [];
+
+  if (exportHeaders.length > 0 && String(exportHeaders[0]).trim().toLowerCase() === 'no') {
+    exportHeaders = exportHeaders.slice(1);
+    exportRows = exportRows.map(row => row.slice(1));
+  }
+
   let csvContent = "\uFEFF";
-  csvContent += res.headers.map(h => `"${h}"`).join(";") + "\r\n";
-  res.rows.forEach(row => {
+  csvContent += exportHeaders.map(h => `"${h}"`).join(";") + "\r\n";
+  exportRows.forEach(row => {
     csvContent += row.map(val => `"${val !== null && val !== undefined ? String(val).replace(/"/g, '""') : ''}"`).join(";") + "\r\n";
   });
 
