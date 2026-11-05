@@ -494,7 +494,7 @@
                 <div>
                   <label class="form-label-sm">Dispense Volume (L) <span class="text-rose-500">*</span></label>
                   <div class="flex items-center gap-1.5">
-                    <input type="number" step="1" min="1" id="outQty" required placeholder="0" oninput="validateAntiMinus(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('outKet').focus();}" class="form-input-sm font-mono font-bold text-slate-900">
+                    <input type="number" step="1" min="1" id="outQty" placeholder="0" oninput="validateAntiMinus(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('outKet').focus();}" class="form-input-sm font-mono font-bold text-slate-900">
                     <button type="button" onclick="addOliToServiceCart()" title="Add item to multi-part PM Service batch" class="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold rounded-xl text-[11px] whitespace-nowrap transition-all shadow-sm">
                       + Service
                     </button>
