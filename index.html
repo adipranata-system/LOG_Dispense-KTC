@@ -199,14 +199,17 @@
           </div>
 
           <div class="flex items-center gap-3">
-            <div id="siteSelectorContainer" class="hidden sm:flex items-center bg-slate-900 rounded-xl px-2.5 py-1.5 border border-slate-800">
+            <div id="siteSelectorContainer" class="flex items-center bg-slate-900 rounded-xl px-2.5 py-1.5 border border-slate-800">
               <span class="text-[11px] font-bold text-slate-400 mr-2 uppercase tracking-wider flex items-center gap-1">
                 <i class="fa-solid fa-location-dot text-amber-500 text-[10px]"></i> Project Site:
               </span>
+              <!-- Tampil Dropdown jika Superadmin -->
               <select id="appSiteSelect" onchange="switchSite(this.value)" class="bg-transparent text-xs font-black text-amber-400 focus:outline-none cursor-pointer">
                 <option value="TTLP" class="bg-slate-900 text-white">SITE TTLP</option>
                 <option value="TNPN" class="bg-slate-900 text-white">SITE TNPN</option>
               </select>
+              <!-- Tampil Label Statis jika Admin Site -->
+              <span id="appSiteAdminBadge" class="hidden text-xs font-black text-amber-400 font-mono">SITE TTLP</span>
             </div>
 
             <!-- ABOUT SYSTEM MODAL TRIGGER -->
@@ -1692,17 +1695,34 @@
         const isSuper = (currentRole === 'SUPERADMIN' && (!res.user.siteAccess || res.user.siteAccess === 'ALL'));
         const siteContainer = document.getElementById('siteSelectorContainer');
         const siteSelect = document.getElementById('appSiteSelect');
+        const siteBadge = document.getElementById('appSiteAdminBadge');
+
+        // Selalu sinkronkan nilai selector ke site akun yang login
+        if (siteSelect) {
+          siteSelect.value = currentSite;
+        }
 
         if (isSuper) {
-          siteContainer.classList.remove('hidden');
-          siteSelect.disabled = false;
-          siteSelect.value = currentSite;
+          if (siteSelect) {
+            siteSelect.classList.remove('hidden');
+            siteSelect.disabled = false;
+          }
+          if (siteBadge) siteBadge.classList.add('hidden');
+
           document.getElementById('btnFinalLock').classList.remove('hidden');
           document.getElementById('superadminClosePeriodSection').classList.remove('hidden');
           document.getElementById('superadminBatchAction').classList.remove('hidden');
         } else {
-          siteContainer.classList.add('hidden');
-          siteSelect.disabled = true;
+          // Khusus Admin: sembunyikan dropdown pemilih, tampilkan badge site resmi akunnya
+          if (siteSelect) {
+            siteSelect.classList.add('hidden');
+            siteSelect.disabled = true;
+          }
+          if (siteBadge) {
+            siteBadge.classList.remove('hidden');
+            siteBadge.innerText = `SITE ${currentSite}`;
+          }
+
           document.getElementById('btnFinalLock').classList.add('hidden');
           document.getElementById('superadminClosePeriodSection').classList.add('hidden');
           document.getElementById('superadminBatchAction').classList.add('hidden');
