@@ -745,6 +745,19 @@ function selectTrfPartItem(partNum) {
   document.getElementById('labelTrfPartDesc').innerText = p.partDesc || '-';
   document.getElementById('btnClearTrfPart').classList.remove('hidden');
   document.getElementById('trfPartDropdownList').classList.add('hidden');
+
+  // Deteksi Satuan Otomatis (Kg vs L)
+  const rawSatuan = String(p.satuan || 'LTR').trim().toUpperCase();
+  const isKg = (rawSatuan === 'KG' || rawSatuan === 'KGM');
+  const unitBadge = isKg ? 'Kg' : 'L';
+  const unitFull = isKg ? 'Kilograms' : 'Liters';
+
+  const lblUnit = document.getElementById('lblTrfUnit');
+  if (lblUnit) lblUnit.innerText = unitFull;
+
+  const lblTitle = document.getElementById('lblTrfQtyTitle');
+  if (lblTitle) lblTitle.innerHTML = `${isKg ? 'Weight' : 'Volume'} (${unitBadge}) <span class="text-rose-500">*</span>`;
+
   triggerCheckTransferStock();
   const nextInput = document.getElementById('trfQty');
   if (nextInput) { nextInput.focus(); nextInput.select(); }
@@ -754,6 +767,13 @@ function clearTrfPartSelection(shouldFocus = false) {
   document.getElementById('trfPartSearchInput').value = '';
   document.getElementById('labelTrfPartDesc').innerText = '-';
   document.getElementById('labelTrfStock').innerHTML = 'Available: <span class="text-amber-700 font-mono">0 L</span>';
+
+  const lblUnit = document.getElementById('lblTrfUnit');
+  if (lblUnit) lblUnit.innerText = 'Liters';
+
+  const lblTitle = document.getElementById('lblTrfQtyTitle');
+  if (lblTitle) lblTitle.innerHTML = 'Volume (Liters) <span class="text-rose-500">*</span>';
+
   document.getElementById('btnClearTrfPart').classList.add('hidden');
   const drop = document.getElementById('trfPartDropdownList');
   if (drop) drop.classList.add('hidden');
@@ -952,91 +972,44 @@ async function queryLiveStock(storageId, partNumber, labelElemId, isTransfer = f
   const unitTxt = (rawSatuan === 'KG' || rawSatuan === 'KGM') ? 'Kg' : 'L';
 
   if (!storageId || !partNumber) {
-    label.innerHTML = isTransfer 
-      ? `Available: <span class="text-amber-700 font-mono">0 ${unitTxt}</span>` 
-      : `Available: <span class="text-amber-700 font-mono">0 ${unitTxt}</span>`;
+    if (label) {
+      label.innerHTML = `Available: <span class="text-amber-700 font-mono">0 ${unitTxt}</span>`;
+    }
     if (!isTransfer) currentAvailableStock = 0;
     return 0;
   }
-  label.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...';
+  if (label) label.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...';
   const res = await callBackend('CHECK_STOCK', { site: currentSite, storageId: storageId, partNumber: partNumber });
   const stock = res.success ? Math.round(Number(res.stock) || 0) : 0;
-  label.innerHTML = `Available: <span class="text-amber-700 font-bold font-mono">${stock.toLocaleString('en-US')} ${unitTxt}</span>`;
+  if (label) {
+    label.innerHTML = `Available: <span class="text-amber-700 font-bold font-mono">${stock.toLocaleString('en-US')} ${unitTxt}</span>`;
+  }
   if (!isTransfer) {
     currentAvailableStock = stock;
-    validateAntiMinus(document.getElementById('outQty').value);
+    validateAntiMinus(document.getElementById('outQty')?.value);
   }
   return stock;
 }
 
 function triggerCheckStock() {
-// 7.5. Transfer Part Combobox
-function renderTrfPartDropdownItems(items, idx = -1) {
-  currentFilteredTrfParts = items || [];
-  activeTrfPartIndex = idx;
-  genericRenderPartDropdown('trfPartDropdownList', currentFilteredTrfParts, activeTrfPartIndex, 'selectTrfPartItem', 'bg-amber-100/80');
+  queryLiveStock(document.getElementById('outStorage')?.value, document.getElementById('outPart')?.value, 'labelLiveStock', false);
 }
-function openTrfPartDropdown() {
-  document.getElementById('trfPartDropdownList').classList.remove('hidden');
-  filterTrfPartDropdown(document.getElementById('trfPartSearchInput').value.trim());
+
+function triggerCheckTransferStock() {
+  queryLiveStock(document.getElementById('trfFromStorage')?.value, document.getElementById('trfPart')?.value, 'labelTrfStock', true);
 }
-function filterTrfPartDropdown(kw) {
-  const q = (kw || '').toLowerCase().trim();
-  const filtered = liveItems.filter(p => `${p.partNumber} ${p.partDesc || ''}`.toLowerCase().includes(q));
-  activeTrfPartIndex = filtered.length > 0 ? 0 : -1;
-  renderTrfPartDropdownItems(filtered, activeTrfPartIndex);
-}
-function handleTrfPartKeydown(e) {
-  activeTrfPartIndex = genericHandleKeydown(e, 'trfPartDropdownList', currentFilteredTrfParts, activeTrfPartIndex, selectTrfPartItem, (l, i) => renderTrfPartDropdownItems(l, i));
-}
-function selectTrfPartItem(partNum) {
-  const p = liveItems.find(item => String(item.partNumber) === String(partNum));
-  if (!p) return;
-  document.getElementById('trfPart').value = p.partNumber;
-  document.getElementById('trfPartSearchInput').value = `${p.partNumber} — ${p.partDesc || ''}`;
-  document.getElementById('labelTrfPartDesc').innerText = p.partDesc || '-';
-  document.getElementById('btnClearTrfPart').classList.remove('hidden');
-  document.getElementById('trfPartDropdownList').classList.add('hidden');
 
-  // Deteksi Satuan Otomatis (Kg vs L)
-  const rawSatuan = String(p.satuan || 'LTR').trim().toUpperCase();
-  const isKg = (rawSatuan === 'KG' || rawSatuan === 'KGM');
-  const unitBadge = isKg ? 'Kg' : 'L';
-  const unitFull = isKg ? 'Kilograms' : 'Liters';
-
-  const lblUnit = document.getElementById('lblTrfUnit');
-  if (lblUnit) lblUnit.innerText = unitFull;
-
-  const lblTitle = document.getElementById('lblTrfQtyTitle');
-  if (lblTitle) lblTitle.innerHTML = `${isKg ? 'Weight' : 'Volume'} (${unitBadge}) <span class="text-rose-500">*</span>`;
-
-  triggerCheckTransferStock();
-  const nextInput = document.getElementById('trfQty');
-  if (nextInput) { nextInput.focus(); nextInput.select(); }
-}
-function clearTrfPartSelection(shouldFocus = false) {
-  document.getElementById('trfPart').value = '';
-  document.getElementById('trfPartSearchInput').value = '';
-  document.getElementById('labelTrfPartDesc').innerText = '-';
-  document.getElementById('labelTrfStock').innerHTML = 'Available: <span class="text-amber-700 font-mono">0 L</span>';
-
-  const lblUnit = document.getElementById('lblTrfUnit');
-  if (lblUnit) lblUnit.innerText = 'Liters';
-
-  const lblTitle = document.getElementById('lblTrfQtyTitle');
-  if (lblTitle) lblTitle.innerHTML = 'Volume (Liters) <span class="text-rose-500">*</span>';
-
-  document.getElementById('btnClearTrfPart').classList.add('hidden');
-  const drop = document.getElementById('trfPartDropdownList');
-  if (drop) drop.classList.add('hidden');
-  renderTrfPartDropdownItems(liveItems);
-  if (shouldFocus) document.getElementById('trfPartSearchInput').focus();
+function triggerCheckReturnStock() {
+  const st = document.getElementById('retStorage')?.value;
+  const pt = document.getElementById('retPart')?.value;
+  queryLiveStock(st, pt, 'labelRetLiveStock', true);
 }
 
 function validateAntiMinus(val) {
   const requested = parseInt(val, 10) || 0;
   const warn = document.getElementById('warnMinus');
   const btn = document.getElementById('btnSubmitOut');
+  if (!warn || !btn) return;
   if (requested > currentAvailableStock) {
     warn.classList.remove('hidden');
     btn.disabled = true;
@@ -1049,12 +1022,12 @@ function validateAntiMinus(val) {
 }
 
 function toggleResetHMPanel() {
-  document.getElementById('resetHMPanel').classList.toggle('hidden');
+  document.getElementById('resetHMPanel')?.classList.toggle('hidden');
 }
 
 function validateHMInput(val) {
   const inputHM = parseFloat(val) || 0;
-  const isResetChecked = document.getElementById('checkResetHM').checked;
+  const isResetChecked = document.getElementById('checkResetHM')?.checked || false;
   const warnBox = document.getElementById('warnHM');
   const warnTxt = document.getElementById('warnHMTxt');
   const warnHighBox = document.getElementById('warnHMHigh');
@@ -1063,23 +1036,24 @@ function validateHMInput(val) {
 
   if (selectedUnitLastHM > 0 && !isResetChecked && inputHM > 0 && inputHM < selectedUnitLastHM) {
     isHMValid = false;
-    warnBox.classList.remove('hidden');
-    warnTxt.innerText = `Input HM (${inputHM.toLocaleString('en-US')}) is lower than last recorded meter (${selectedUnitLastHM.toLocaleString('en-US')})!`;
-    hmInputEl.classList.add('border-rose-400', 'bg-rose-50', 'text-rose-700');
-    btnSubmit.disabled = true;
+    if (warnBox) warnBox.classList.remove('hidden');
+    if (warnTxt) warnTxt.innerText = `Input HM (${inputHM.toLocaleString('en-US')}) is lower than last recorded meter (${selectedUnitLastHM.toLocaleString('en-US')})!`;
+    if (hmInputEl) hmInputEl.classList.add('border-rose-400', 'bg-rose-50', 'text-rose-700');
+    if (btnSubmit) btnSubmit.disabled = true;
     if (warnHighBox) warnHighBox.classList.add('hidden');
   } else {
     isHMValid = true;
-    warnBox.classList.add('hidden');
-    hmInputEl.classList.remove('border-rose-400', 'bg-rose-50', 'text-rose-700');
-    btnSubmit.disabled = false;
+    if (warnBox) warnBox.classList.add('hidden');
+    if (hmInputEl) hmInputEl.classList.remove('border-rose-400', 'bg-rose-50', 'text-rose-700');
+    if (btnSubmit) btnSubmit.disabled = false;
 
     if (selectedUnitLastHM > 0 && !isResetChecked && inputHM > 0) {
       const deltaHM = Number((inputHM - selectedUnitLastHM).toFixed(1));
       if (deltaHM > 30) {
         if (warnHighBox) {
           warnHighBox.classList.remove('hidden');
-          document.getElementById('warnHMHighTxt').innerText = `Notice: Elevated HM Delta (+${deltaHM.toLocaleString('en-US')} hrs from last log). Verify digit entry!`;
+          const warnHighTxt = document.getElementById('warnHMHighTxt');
+          if (warnHighTxt) warnHighTxt.innerText = `Notice: Elevated HM Delta (+${deltaHM.toLocaleString('en-US')} hrs from last log). Verify digit entry!`;
         }
       } else {
         if (warnHighBox) warnHighBox.classList.add('hidden');
@@ -1088,7 +1062,7 @@ function validateHMInput(val) {
       if (warnHighBox) warnHighBox.classList.add('hidden');
     }
 
-    validateAntiMinus(document.getElementById('outQty').value);
+    validateAntiMinus(document.getElementById('outQty')?.value);
   }
 }
 
@@ -1098,13 +1072,18 @@ function toggleResetHM(isChecked) {
   const hmInputEl = document.getElementById('outHM');
   if (isChecked) {
     if (warnHighBox) warnHighBox.classList.add('hidden');
-    warnBox.classList.remove('hidden');
-    warnBox.className = "text-[11px] text-blue-700 font-bold bg-blue-50 p-2 rounded-lg border border-blue-200";
-    document.getElementById('warnHMTxt').innerText = "ℹ️ Gauge Override Mode Active: Newly initialized meter will be accepted.";
+    if (warnBox) {
+      warnBox.classList.remove('hidden');
+      warnBox.className = "text-[11px] text-blue-700 font-bold bg-blue-50 p-2 rounded-lg border border-blue-200";
+    }
+    const warnTxt = document.getElementById('warnHMTxt');
+    if (warnTxt) warnTxt.innerText = "ℹ️ Gauge Override Mode Active: Newly initialized meter will be accepted.";
     isHMValid = true;
   } else {
-    warnBox.className = "hidden text-[11px] text-rose-600 font-bold bg-rose-50 p-2 rounded-lg border border-rose-200";
-    validateHMInput(hmInputEl.value);
+    if (warnBox) {
+      warnBox.className = "hidden text-[11px] text-rose-600 font-bold bg-rose-50 p-2 rounded-lg border border-rose-200";
+    }
+    validateHMInput(hmInputEl?.value);
   }
 }
 
@@ -1157,27 +1136,29 @@ function renderServiceCart() {
   const btnLabel = document.getElementById('btnSubmitOutLabel');
 
   if (serviceCart.length === 0) {
-    container.classList.add('hidden');
-    btnLabel.innerText = "Submit Dispense Order";
+    container?.classList.add('hidden');
+    if (btnLabel) btnLabel.innerText = "Submit Dispense Order";
     return;
   }
 
-  container.classList.remove('hidden');
-  countEl.innerText = serviceCart.length;
-  btnLabel.innerText = `Submit Batch (${serviceCart.length} Service Items)`;
+  container?.classList.remove('hidden');
+  if (countEl) countEl.innerText = serviceCart.length;
+  if (btnLabel) btnLabel.innerText = `Submit Batch (${serviceCart.length} Service Items)`;
 
-  listEl.innerHTML = serviceCart.map((item, idx) => `
-    <div class="flex items-center justify-between bg-white p-1.5 rounded-xl border border-amber-200 text-xs">
-      <div class="truncate pr-2">
-        <span class="font-bold text-slate-800 font-mono">${item.partNumber}</span>
-        <span class="text-amber-700 font-black font-mono ml-1.5">${item.qty.toLocaleString('en-US')} L</span>
-        <span class="text-[10px] text-slate-400 block">${item.partDescription} (${item.sourceStorage})</span>
+  if (listEl) {
+    listEl.innerHTML = serviceCart.map((item, idx) => `
+      <div class="flex items-center justify-between bg-white p-1.5 rounded-xl border border-amber-200 text-xs">
+        <div class="truncate pr-2">
+          <span class="font-bold text-slate-800 font-mono">${item.partNumber}</span>
+          <span class="text-amber-700 font-black font-mono ml-1.5">${item.qty.toLocaleString('en-US')} L</span>
+          <span class="text-[10px] text-slate-400 block">${item.partDescription} (${item.sourceStorage})</span>
+        </div>
+        <button type="button" onclick="removeServiceCartItem(${idx})" class="text-rose-500 hover:text-rose-700 p-1">
+          <i class="fa-solid fa-trash-can text-[11px]"></i>
+        </button>
       </div>
-      <button type="button" onclick="removeServiceCartItem(${idx})" class="text-rose-500 hover:text-rose-700 p-1">
-        <i class="fa-solid fa-trash-can text-[11px]"></i>
-      </button>
-    </div>
-  `).join('');
+    `).join('');
+  }
 }
 
 function removeServiceCartItem(idx) {
@@ -1205,7 +1186,7 @@ async function submitPartOutData() {
   if (!rawKet) { showModalAlert("Required Field", "Technician Name is mandatory!"); return; }
 
   const unit = liveUnits.find(u => u.unitId === unitId) || { desc: '-', model: '-' };
-  const isResetChecked = document.getElementById('checkResetHM').checked;
+  const isResetChecked = document.getElementById('checkResetHM')?.checked || false;
   let finalKet = isResetChecked ? `${rawKet} [RESET HM]` : rawKet;
 
   const btn = document.getElementById('btnSubmitOut');
@@ -1280,8 +1261,8 @@ async function submitPartOutData() {
     document.getElementById('outQty').value = '';
     document.getElementById('outKet').value = '';
     document.getElementById('outHM').value = '0';
-    document.getElementById('checkResetHM').checked = false;
-    document.getElementById('resetHMPanel').classList.add('hidden');
+    if (document.getElementById('checkResetHM')) document.getElementById('checkResetHM').checked = false;
+    document.getElementById('resetHMPanel')?.classList.add('hidden');
     clearServiceCart();
     clearUnitSelection();
     clearPartSelection();
@@ -1291,7 +1272,7 @@ async function submitPartOutData() {
     fetchExecutiveKPI();
 
     showModalAlert("Transaction Successful", res.message, true, () => {
-      setTimeout(() => { document.getElementById('partSearchInput').focus(); }, 50);
+      setTimeout(() => { document.getElementById('partSearchInput')?.focus(); }, 50);
     });
   } else {
     showModalAlert("Transaction Rejected", res.message);
@@ -1382,27 +1363,31 @@ function toggleInSourceType(mode) {
   const btnClearSupp = document.getElementById('btnClearSupplier');
 
   if (mode === 'TRANSFER_SJ') {
-    pSJ.classList.remove('hidden');
-    if (cItemDetail) cItemDetail.classList.add('hidden');
-    if (cPartSearch) cPartSearch.classList.add('hidden');
-    if (cQtyDoc) cQtyDoc.classList.add('hidden');
-    vendorCartCont.classList.add('hidden');
-    btnLbl.innerText = "Confirm Inbound Inter-Site Transfer";
+    pSJ?.classList.remove('hidden');
+    cItemDetail?.classList.add('hidden');
+    cPartSearch?.classList.add('hidden');
+    cQtyDoc?.classList.add('hidden');
+    vendorCartCont?.classList.add('hidden');
+    if (btnLbl) btnLbl.innerText = "Confirm Inbound Inter-Site Transfer";
 
-    suppInput.disabled = true;
-    suppInput.classList.add('bg-slate-100', 'cursor-not-allowed');
-    btnClearSupp.classList.add('hidden');
+    if (suppInput) {
+      suppInput.disabled = true;
+      suppInput.classList.add('bg-slate-100', 'cursor-not-allowed');
+    }
+    btnClearSupp?.classList.add('hidden');
   } else {
-    pSJ.classList.add('hidden');
-    if (cItemDetail) cItemDetail.classList.remove('hidden');
-    if (cPartSearch) cPartSearch.classList.remove('hidden');
-    if (cQtyDoc) cQtyDoc.classList.remove('hidden');
-    cartCont.classList.add('hidden');
+    pSJ?.classList.add('hidden');
+    cItemDetail?.classList.remove('hidden');
+    cPartSearch?.classList.remove('hidden');
+    cQtyDoc?.classList.remove('hidden');
+    cartCont?.classList.add('hidden');
     inboundSJMatchedItems = [];
     renderVendorInCart();
 
-    suppInput.disabled = false;
-    suppInput.classList.remove('bg-slate-100', 'cursor-not-allowed');
+    if (suppInput) {
+      suppInput.disabled = false;
+      suppInput.classList.remove('bg-slate-100', 'cursor-not-allowed');
+    }
     clearSupplierSelection();
   }
 }
@@ -1447,28 +1432,30 @@ function renderVendorInCart() {
   const btnLabel = document.getElementById('lblBtnSubmitIn');
 
   if (vendorInCart.length === 0) {
-    container.classList.add('hidden');
-    btnLabel.innerText = "Submit Inbound Receiving";
+    container?.classList.add('hidden');
+    if (btnLabel) btnLabel.innerText = "Submit Inbound Receiving";
     return;
   }
 
-  container.classList.remove('hidden');
-  countEl.innerText = vendorInCart.length;
-  btnLabel.innerText = `Submit Batch (${vendorInCart.length} DO Items)`;
+  container?.classList.remove('hidden');
+  if (countEl) countEl.innerText = vendorInCart.length;
+  if (btnLabel) btnLabel.innerText = `Submit Batch (${vendorInCart.length} DO Items)`;
 
-  listEl.innerHTML = vendorInCart.map((item, idx) => `
-    <div class="flex items-center justify-between bg-white p-1.5 rounded-xl border border-blue-200 text-xs">
-      <div class="truncate pr-2">
-        <span class="font-bold text-slate-800 font-mono">${item.partNumber}</span>
-        <span class="text-blue-700 font-black font-mono ml-1.5">${item.qty.toLocaleString('en-US')} L</span>
-        <span class="text-[10px] text-emerald-700 font-bold ml-1.5 font-mono">@IDR ${item.hargaSatuan.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
-        <span class="text-[10px] text-slate-400 block">${item.partDescription} (Total: IDR ${item.hargaTotal.toLocaleString('en-US')})</span>
+  if (listEl) {
+    listEl.innerHTML = vendorInCart.map((item, idx) => `
+      <div class="flex items-center justify-between bg-white p-1.5 rounded-xl border border-blue-200 text-xs">
+        <div class="truncate pr-2">
+          <span class="font-bold text-slate-800 font-mono">${item.partNumber}</span>
+          <span class="text-blue-700 font-black font-mono ml-1.5">${item.qty.toLocaleString('en-US')} L</span>
+          <span class="text-[10px] text-emerald-700 font-bold ml-1.5 font-mono">@IDR ${item.hargaSatuan.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+          <span class="text-[10px] text-slate-400 block">${item.partDescription} (Total: IDR ${item.hargaTotal.toLocaleString('en-US')})</span>
+        </div>
+        <button type="button" onclick="removeVendorInCartItem(${idx})" class="text-rose-500 hover:text-rose-700 p-1">
+          <i class="fa-solid fa-trash-can text-[11px]"></i>
+        </button>
       </div>
-      <button type="button" onclick="removeVendorInCartItem(${idx})" class="text-rose-500 hover:text-rose-700 p-1">
-        <i class="fa-solid fa-trash-can text-[11px]"></i>
-      </button>
-    </div>
-  `).join('');
+    `).join('');
+  }
 }
 
 function removeVendorInCartItem(idx) {
@@ -1499,8 +1486,10 @@ async function triggerSJAutoFill() {
     btn.classList.add('opacity-70', 'cursor-not-allowed');
   }
 
-  statusLbl.innerText = "Searching Logistics Registry...";
-  statusLbl.classList.remove('hidden');
+  if (statusLbl) {
+    statusLbl.innerText = "Searching Logistics Registry...";
+    statusLbl.classList.remove('hidden');
+  }
 
   try {
     const res = await callBackend('LOOKUP_TRANSFER_SJ', { site: currentSite, noSJ: sjQuery });
@@ -1520,24 +1509,26 @@ async function triggerSJAutoFill() {
 
       const cartCont = document.getElementById('inboundCartContainer');
       const listEl = document.getElementById('inboundCartList');
-      document.getElementById('inboundCartCount').innerText = inboundSJMatchedItems.length;
-      cartCont.classList.remove('hidden');
+      if (document.getElementById('inboundCartCount')) document.getElementById('inboundCartCount').innerText = inboundSJMatchedItems.length;
+      cartCont?.classList.remove('hidden');
 
-      listEl.innerHTML = inboundSJMatchedItems.map(it => `
-        <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-blue-200 text-xs">
-          <div>
-            <span class="font-bold text-slate-800 font-mono">${it.partNumber}</span>
-            <span class="text-blue-700 font-black font-mono ml-1">${Math.round(Number(it.qtyKirim)).toLocaleString('en-US')} L</span>
-            <span class="text-[10px] text-slate-400 block">${it.partDescription}</span>
-            <span class="text-[10px] text-emerald-600 font-bold block font-mono">Valuation: IDR ${Number(it.price || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}/L</span>
+      if (listEl) {
+        listEl.innerHTML = inboundSJMatchedItems.map(it => `
+          <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-blue-200 text-xs">
+            <div>
+              <span class="font-bold text-slate-800 font-mono">${it.partNumber}</span>
+              <span class="text-blue-700 font-black font-mono ml-1">${Math.round(Number(it.qtyKirim)).toLocaleString('en-US')} L</span>
+              <span class="text-[10px] text-slate-400 block">${it.partDescription}</span>
+              <span class="text-[10px] text-emerald-600 font-bold block font-mono">Valuation: IDR ${Number(it.price || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}/L</span>
+            </div>
+            <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-mono">ORIGIN ${it.originSite}</span>
           </div>
-          <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-mono">ORIGIN ${it.originSite}</span>
-        </div>
-      `).join('');
+        `).join('');
+      }
 
-      statusLbl.innerText = `✓ Found ${inboundSJMatchedItems.length} cargo items for Waybill ${first.noSJ}`;
+      if (statusLbl) statusLbl.innerText = `✓ Found ${inboundSJMatchedItems.length} cargo items for Waybill ${first.noSJ}`;
     } else {
-      statusLbl.innerText = "⚠️ " + (res.message || "Waybill not found in active dispatch registry.");
+      if (statusLbl) statusLbl.innerText = "⚠️ " + (res.message || "Waybill not found in active dispatch registry.");
       showModalAlert("Waybill Not Found", res.message || "Waybill not found or already verified.");
     }
   } finally {
@@ -1550,7 +1541,7 @@ async function triggerSJAutoFill() {
 }
 
 async function submitPartInData() {
-  const isTransferMode = document.querySelector('input[name="inSourceType"]:checked').value === 'TRANSFER_SJ';
+  const isTransferMode = document.querySelector('input[name="inSourceType"]:checked')?.value === 'TRANSFER_SJ';
   const targetStorage = document.getElementById('inStorage').value.trim();
   const tanggal = document.getElementById('inDate').value.trim();
   const noDok = document.getElementById('inNoDok').value.trim();
@@ -1663,8 +1654,8 @@ async function submitPartInData() {
     document.getElementById('inHarga').value = '';
     document.getElementById('inNoDok').value = '';
     document.getElementById('lookupSJInput').value = '';
-    document.getElementById('lblSJLookupStatus').classList.add('hidden');
-    document.getElementById('inboundCartContainer').classList.add('hidden');
+    document.getElementById('lblSJLookupStatus')?.classList.add('hidden');
+    document.getElementById('inboundCartContainer')?.classList.add('hidden');
     inboundSJMatchedItems = [];
     clearVendorInCart();
     clearPartInSelection();
@@ -1674,7 +1665,7 @@ async function submitPartInData() {
     checkPendingInboundTransfers();
 
     showModalAlert("Inbound Logged", res.message, true, () => {
-      setTimeout(() => { document.getElementById('supplierSearchInput').focus(); }, 50);
+      setTimeout(() => { document.getElementById('supplierSearchInput')?.focus(); }, 50);
     });
   } else {
     showModalAlert("Submission Failed", res.message);
@@ -1763,30 +1754,30 @@ function toggleTransferType(mode) {
   const badgeStore = document.getElementById('badgeTrfStoreLock');
 
   if (mode === 'INTER_SITE') {
-    pMR.classList.add('hidden');
-    if (pPetugas) pPetugas.classList.add('hidden');
-    pInt.classList.add('hidden');
-    pSite.classList.remove('hidden');
-    pInter.classList.remove('hidden');
+    pMR?.classList.add('hidden');
+    pPetugas?.classList.add('hidden');
+    pInt?.classList.add('hidden');
+    pSite?.classList.remove('hidden');
+    pInter?.classList.remove('hidden');
     if (mrInput) mrInput.required = false;
     if (petugasInput) petugasInput.required = false;
     if (toStInput) toStInput.required = false;
-    if (badgeStore) badgeStore.classList.remove('hidden');
+    badgeStore?.classList.remove('hidden');
     lockTransferFromStorageToStore(true);
     handleToSiteChange();
   } else {
-    pMR.classList.remove('hidden');
-    if (pPetugas) pPetugas.classList.remove('hidden');
-    pInt.classList.remove('hidden');
-    pSite.classList.add('hidden');
-    pInter.classList.add('hidden');
-    if (pNon) pNon.classList.add('hidden');
+    pMR?.classList.remove('hidden');
+    pPetugas?.classList.remove('hidden');
+    pInt?.classList.remove('hidden');
+    pSite?.classList.add('hidden');
+    pInter?.classList.add('hidden');
+    pNon?.classList.add('hidden');
     if (mrInput) mrInput.required = true;
     if (petugasInput) petugasInput.required = true;
     if (toStInput) toStInput.required = true;
-    if (badgeStore) badgeStore.classList.add('hidden');
+    badgeStore?.classList.add('hidden');
     lockTransferFromStorageToStore(false);
-    btnLbl.innerText = "⚡ Execute Internal Tank Transfer";
+    if (btnLbl) btnLbl.innerText = "⚡ Execute Internal Tank Transfer";
   }
 }
 
@@ -1867,30 +1858,32 @@ function renderTransferCart() {
   const countEl = document.getElementById('trfCartCount');
 
   if (transferCart.length === 0) {
-    container.classList.add('hidden');
+    container?.classList.add('hidden');
     return;
   }
 
-  container.classList.remove('hidden');
-  countEl.innerText = transferCart.length;
+  container?.classList.remove('hidden');
+  if (countEl) countEl.innerText = transferCart.length;
 
-  listEl.innerHTML = transferCart.map((item, idx) => {
-    const rawSatuan = String(item.satuan || 'LTR').trim().toUpperCase();
-    const unitBadge = (rawSatuan === 'KG' || rawSatuan === 'KGM') ? 'Kg' : 'L';
+  if (listEl) {
+    listEl.innerHTML = transferCart.map((item, idx) => {
+      const rawSatuan = String(item.satuan || 'LTR').trim().toUpperCase();
+      const unitBadge = (rawSatuan === 'KG' || rawSatuan === 'KGM') ? 'Kg' : 'L';
 
-    return `
-      <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-slate-200 text-xs">
-        <div class="truncate pr-2">
-          <span class="font-bold text-slate-800 font-mono">${item.partNumber}</span>
-          <span class="text-amber-700 font-black font-mono ml-1.5">${item.qty.toLocaleString('en-US')} ${unitBadge}</span>
-          <span class="text-[10px] text-slate-400 block">${item.partDescription} (From ${item.fromStorage})</span>
+      return `
+        <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-slate-200 text-xs">
+          <div class="truncate pr-2">
+            <span class="font-bold text-slate-800 font-mono">${item.partNumber}</span>
+            <span class="text-amber-700 font-black font-mono ml-1.5">${item.qty.toLocaleString('en-US')} ${unitBadge}</span>
+            <span class="text-[10px] text-slate-400 block">${item.partDescription} (From ${item.fromStorage})</span>
+          </div>
+          <button type="button" onclick="removeTransferCartItem(${idx})" class="text-rose-500 hover:text-rose-700 p-1">
+            <i class="fa-solid fa-trash-can text-[11px]"></i>
+          </button>
         </div>
-        <button type="button" onclick="removeTransferCartItem(${idx})" class="text-rose-500 hover:text-rose-700 p-1">
-          <i class="fa-solid fa-trash-can text-[11px]"></i>
-        </button>
-      </div>
-    `;
-  }).join('');
+      `;
+    }).join('');
+  }
 }
 
 function removeTransferCartItem(idx) {
@@ -1904,7 +1897,7 @@ function clearTransferCart() {
 }
 
 async function submitTransferData() {
-  const isInterSite = document.querySelector('input[name="trfTypeOption"]:checked').value === 'INTER_SITE';
+  const isInterSite = document.querySelector('input[name="trfTypeOption"]:checked')?.value === 'INTER_SITE';
   const fromSt = document.getElementById('trfFromStorage').value.trim();
   const tanggal = document.getElementById('trfDate').value.trim();
 
@@ -2726,8 +2719,8 @@ async function openHybridAdjustModal(idx) {
 
   const modal = document.getElementById('modalHybridAdjust');
   const tbody = document.getElementById('tableModalAdjustBody');
-  tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Calculating allocation vectors...</td></tr>';
-  modal.classList.remove('hidden');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Calculating allocation vectors...</td></tr>';
+  modal?.classList.remove('hidden');
 
   document.getElementById('lblModalAdjustItem').innerText = `${item.storageId} • ${item.partNumber}`;
   document.getElementById('lblModalAdjustDiff').innerText = `${selisih > 0 ? '+' : ''}${selisih} Liters`;
@@ -2748,7 +2741,7 @@ async function openHybridAdjustModal(idx) {
     currentHybridAllocations = res.data.allocations || [];
     renderHybridAdjustModal(res.data);
   } else {
-    tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-rose-500 font-bold">${res.message || 'Failed to load allocation preview.'}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-rose-500 font-bold">${res.message || 'Failed to load allocation preview.'}</td></tr>`;
   }
 }
 
@@ -2760,47 +2753,49 @@ function renderHybridAdjustModal(data) {
   const dirTxt = document.getElementById('lblModalAdjustDirectionTxt');
 
   if (data.isSmallPool) {
-    boxWarn.classList.remove('hidden');
+    boxWarn?.classList.remove('hidden');
   } else {
-    boxWarn.classList.add('hidden');
+    boxWarn?.classList.add('hidden');
   }
 
   if (data.isSurplus) {
-    dirBox.className = "mb-3 p-2.5 rounded-xl text-[11px] font-semibold flex items-center gap-2 bg-blue-50 text-blue-900 border border-blue-200";
-    dirTxt.innerHTML = "<b>Positive Physical Variance (+):</b> Outbound volumes below are <b>reduced</b> proportionally to align book balance with sounding.";
+    if (dirBox) dirBox.className = "mb-3 p-2.5 rounded-xl text-[11px] font-semibold flex items-center gap-2 bg-blue-50 text-blue-900 border border-blue-200";
+    if (dirTxt) dirTxt.innerHTML = "<b>Positive Physical Variance (+):</b> Outbound volumes below are <b>reduced</b> proportionally to align book balance with sounding.";
   } else {
-    dirBox.className = "mb-3 p-2.5 rounded-xl text-[11px] font-semibold flex items-center gap-2 bg-amber-50 text-amber-900 border border-amber-200";
-    dirTxt.innerHTML = "<b>Negative Physical Variance (-):</b> Outbound volumes below are <b>augmented</b> proportionally to absorb variance into equipment operation.";
+    if (dirBox) dirBox.className = "mb-3 p-2.5 rounded-xl text-[11px] font-semibold flex items-center gap-2 bg-amber-50 text-amber-900 border border-amber-200";
+    if (dirTxt) dirTxt.innerHTML = "<b>Negative Physical Variance (-):</b> Outbound volumes below are <b>augmented</b> proportionally to absorb variance into equipment operation.";
   }
 
-  residualLbl.innerText = `${data.residualVariance} L`;
+  if (residualLbl) residualLbl.innerText = `${data.residualVariance} L`;
 
   if (!currentHybridAllocations || currentHybridAllocations.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">No matching operational transactions found.</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">No matching operational transactions found.</td></tr>';
     return;
   }
 
-  tbody.innerHTML = currentHybridAllocations.map((row, idx) => {
-    const isMinusAdjust = row.suggestedAdjust < 0;
-    const adjustColorClass = isMinusAdjust ? 'text-blue-600' : 'text-amber-800';
-    return `
-      <tr class="hover:bg-slate-50 transition-colors text-xs">
-        <td class="p-2 whitespace-nowrap text-slate-500 font-mono text-[11px]">${row.tanggal}</td>
-        <td class="p-2 font-bold text-slate-900 whitespace-nowrap font-mono">
-          ${row.unitId}
-          ${row.isHeavy ? '<span class="ml-1 px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[9px] font-bold font-sans">HEAVY FLEET</span>' : ''}
-        </td>
-        <td class="p-2 text-slate-500 whitespace-nowrap">${row.model}</td>
-        <td class="p-2 text-right font-mono font-bold text-slate-700">${Math.round(row.qtyActual)} L</td>
-        <td class="p-2 text-center">
-          <input type="number" step="1" value="${row.suggestedAdjust}" oninput="updateHybridAdjustInput(${idx}, this.value)" class="w-20 text-center py-1 px-1.5 border rounded-lg font-bold font-mono ${adjustColorClass} bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
-        </td>
-        <td class="p-2 text-right font-mono font-black text-slate-900" id="lblHybridFinal_${idx}">
-          ${row.finalQty} L
-        </td>
-      </tr>
-    `;
-  }).join('');
+  if (tbody) {
+    tbody.innerHTML = currentHybridAllocations.map((row, idx) => {
+      const isMinusAdjust = row.suggestedAdjust < 0;
+      const adjustColorClass = isMinusAdjust ? 'text-blue-600' : 'text-amber-800';
+      return `
+        <tr class="hover:bg-slate-50 transition-colors text-xs">
+          <td class="p-2 whitespace-nowrap text-slate-500 font-mono text-[11px]">${row.tanggal}</td>
+          <td class="p-2 font-bold text-slate-900 whitespace-nowrap font-mono">
+            ${row.unitId}
+            ${row.isHeavy ? '<span class="ml-1 px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[9px] font-bold font-sans">HEAVY FLEET</span>' : ''}
+          </td>
+          <td class="p-2 text-slate-500 whitespace-nowrap">${row.model}</td>
+          <td class="p-2 text-right font-mono font-bold text-slate-700">${Math.round(row.qtyActual)} L</td>
+          <td class="p-2 text-center">
+            <input type="number" step="1" value="${row.suggestedAdjust}" oninput="updateHybridAdjustInput(${idx}, this.value)" class="w-20 text-center py-1 px-1.5 border rounded-lg font-bold font-mono ${adjustColorClass} bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+          </td>
+          <td class="p-2 text-right font-mono font-black text-slate-900" id="lblHybridFinal_${idx}">
+            ${row.finalQty} L
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
 }
 
 function updateHybridAdjustInput(idx, val) {
@@ -2817,11 +2812,12 @@ function updateHybridAdjustInput(idx, val) {
   currentHybridAllocations.forEach(a => { totalAssigned += Number(a.suggestedAdjust || 0); });
   const origDiff = Number(currentHybridItemMeta.originalDiscrepancy) || 0;
   const residual = Number((origDiff + totalAssigned).toFixed(2));
-  document.getElementById('lblModalAdjustResidual').innerText = `${residual} L`;
+  const resLbl = document.getElementById('lblModalAdjustResidual');
+  if (resLbl) resLbl.innerText = `${residual} L`;
 }
 
 function closeHybridAdjustModal() {
-  document.getElementById('modalHybridAdjust').classList.add('hidden');
+  document.getElementById('modalHybridAdjust')?.classList.add('hidden');
   currentHybridAllocations = [];
   currentHybridItemMeta = null;
 }
@@ -3134,23 +3130,23 @@ function downloadCSV(reportType) {
   const isSuper = (currentRole === 'SUPERADMIN');
 
   if (reportType === 'OUT') {
-    title.innerText = "Export Dispense Log (Part Out)";
-    notice.innerText = "CSV format is structured for Microsoft Excel (semicolon delimited & UTF-8 with BOM).";
+    if (title) title.innerText = "Export Dispense Log (Part Out)";
+    if (notice) notice.innerText = "CSV format is structured for Microsoft Excel (semicolon delimited & UTF-8 with BOM).";
   } else if (reportType === 'IN') {
-    title.innerText = "Export Inbound Receiving Log (Part In)";
-    notice.innerText = "CSV format is structured for Microsoft Excel (semicolon delimited & UTF-8 with BOM).";
+    if (title) title.innerText = "Export Inbound Receiving Log (Part In)";
+    if (notice) notice.innerText = "CSV format is structured for Microsoft Excel (semicolon delimited & UTF-8 with BOM).";
   } else if (reportType === 'MUTASI') {
-    title.innerText = "Export Transfer & Dispatch Log";
-    notice.innerText = "CSV export contains all internal tank movements and cross-site shipments.";
+    if (title) title.innerText = "Export Transfer & Dispatch Log";
+    if (notice) notice.innerText = "CSV export contains all internal tank movements and cross-site shipments.";
   } else if (reportType === 'RETURN') {
-    title.innerText = "Export Return & Reversal Audit Log";
-    notice.innerText = "Chronological audit trail of all fleet reversals and vendor returns.";
+    if (title) title.innerText = "Export Return & Reversal Audit Log";
+    if (notice) notice.innerText = "Chronological audit trail of all fleet reversals and vendor returns.";
   } else {
-    title.innerText = "Export Stock Balance Reconciliation";
+    if (title) title.innerText = "Export Stock Balance Reconciliation";
     if (isSuper) {
-      notice.innerText = "Superadmin Mode: You may export records under either DRAFT or FINAL_LOCKED status.";
+      if (notice) notice.innerText = "Superadmin Mode: You may export records under either DRAFT or FINAL_LOCKED status.";
     } else {
-      notice.innerText = "Notice: Site Administrators may only export reconciliation reports that have been finalized (FINAL_LOCKED).";
+      if (notice) notice.innerText = "Notice: Site Administrators may only export reconciliation reports that have been finalized (FINAL_LOCKED).";
     }
   }
 
@@ -3161,13 +3157,13 @@ function downloadCSV(reportType) {
   const balM = document.getElementById('balMonth') ? document.getElementById('balMonth').value : monthNames[now.getMonth()];
   const balY = document.getElementById('balYear') ? document.getElementById('balYear').value : now.getFullYear();
 
-  document.getElementById('exportMonth').value = balM || monthNames[now.getMonth()];
-  document.getElementById('exportYear').value = balY || now.getFullYear();
-  document.getElementById('exportStartDate').value = todayStr;
-  document.getElementById('exportEndDate').value = todayStr;
+  if (document.getElementById('exportMonth')) document.getElementById('exportMonth').value = balM || monthNames[now.getMonth()];
+  if (document.getElementById('exportYear')) document.getElementById('exportYear').value = balY || now.getFullYear();
+  if (document.getElementById('exportStartDate')) document.getElementById('exportStartDate').value = todayStr;
+  if (document.getElementById('exportEndDate')) document.getElementById('exportEndDate').value = todayStr;
 
   toggleExportMode('MONTH');
-  modal.classList.remove('hidden');
+  modal?.classList.remove('hidden');
 }
 
 function closeExportModal() {
@@ -3178,17 +3174,17 @@ function toggleExportMode(mode) {
   const pMonth = document.getElementById('exportPanelMonth');
   const pRange = document.getElementById('exportPanelRange');
   if (mode === 'MONTH') {
-    pMonth.classList.remove('hidden');
-    pRange.classList.add('hidden');
+    pMonth?.classList.remove('hidden');
+    pRange?.classList.add('hidden');
   } else {
-    pMonth.classList.add('hidden');
-    pRange.classList.remove('hidden');
+    pMonth?.classList.add('hidden');
+    pRange?.classList.remove('hidden');
   }
 }
 
 async function executeDownloadCSV() {
   const btn = document.getElementById('btnExecuteDownloadCSV');
-  const mode = document.querySelector('input[name="exportMode"]:checked').value;
+  const mode = document.querySelector('input[name="exportMode"]:checked')?.value || 'MONTH';
   const reportType = activeExportType;
 
   const payload = { 
@@ -3199,11 +3195,11 @@ async function executeDownloadCSV() {
   };
 
   if (mode === 'MONTH') {
-    payload.month = document.getElementById('exportMonth').value;
-    payload.year = document.getElementById('exportYear').value;
+    payload.month = document.getElementById('exportMonth')?.value;
+    payload.year = document.getElementById('exportYear')?.value;
   } else {
-    payload.startDate = document.getElementById('exportStartDate').value;
-    payload.endDate = document.getElementById('exportEndDate').value;
+    payload.startDate = document.getElementById('exportStartDate')?.value;
+    payload.endDate = document.getElementById('exportEndDate')?.value;
     if (!payload.startDate || !payload.endDate) {
       showModalAlert("Required Field", "Please select both Start Date and End Date.");
       return;
@@ -3291,12 +3287,12 @@ function showModalAlert(title, message, isSuccess = false, onDismiss = null) {
     icon.className = "w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-4 bg-rose-50 text-rose-600";
     icon.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i>';
   }
-  box.classList.remove('hidden');
+  box?.classList.remove('hidden');
   setTimeout(() => { if (btn) btn.focus(); }, 50);
 }
 
 function closeModalAlert() {
-  document.getElementById('modalAlertBox').classList.add('hidden');
+  document.getElementById('modalAlertBox')?.classList.add('hidden');
   if (typeof modalCallback === 'function') {
     const cb = modalCallback;
     modalCallback = null;
