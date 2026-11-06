@@ -981,7 +981,7 @@
                 </div>
 
                 <div class="col-span-5">
-                  <label class="form-label-sm">Volume (Liters) <span class="text-rose-500">*</span></label>
+                  <label id="lblTrfQtyTitle" class="form-label-sm">Volume (Liters) <span class="text-rose-500">*</span></label>
                   <div class="flex items-center gap-1.5">
                     <input type="number" step="1" min="1" id="trfQty" placeholder="0" class="form-input-sm font-mono font-bold text-slate-900">
                     <button type="button" onclick="addOliToTransferCart()" title="Queue item for batch transfer" class="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold rounded-xl text-xs whitespace-nowrap transition-all shadow-sm">
@@ -989,7 +989,7 @@
                     </button>
                   </div>
                   <div class="mt-1 text-[10px] text-slate-400 px-1 text-right">
-                    Unit: <span class="font-semibold text-slate-600">Liters</span>
+                    Unit: <span id="lblTrfUnit" class="font-semibold text-slate-600">Liters</span>
                   </div>
                 </div>
               </div>
