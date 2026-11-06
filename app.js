@@ -1430,45 +1430,62 @@ async function triggerSJAutoFill() {
     return;
   }
 
+  const btn = document.getElementById('btnFetchCargo');
+  let origBtnHtml = '';
+  if (btn) {
+    origBtnHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span>Fetching...</span>';
+    btn.classList.add('opacity-70', 'cursor-not-allowed');
+  }
+
   statusLbl.innerText = "Searching Logistics Registry...";
   statusLbl.classList.remove('hidden');
 
-  const res = await callBackend('LOOKUP_TRANSFER_SJ', { site: currentSite, noSJ: sjQuery });
-  if (res.success && res.data && res.data.length > 0) {
-    inboundSJMatchedItems = res.data;
-    const first = inboundSJMatchedItems[0];
+  try {
+    const res = await callBackend('LOOKUP_TRANSFER_SJ', { site: currentSite, noSJ: sjQuery });
+    if (res.success && res.data && res.data.length > 0) {
+      inboundSJMatchedItems = res.data;
+      const first = inboundSJMatchedItems[0];
 
-    document.getElementById('inSupplierCode').value = first.originSite;
-    document.getElementById('inSupplierName').value = `TRANSFER SITE ${first.originSite}`;
-    document.getElementById('supplierSearchInput').value = `[SITE ${first.originSite}] TRANSFER SITE ${first.originSite}`;
-    document.getElementById('lblSelectedSupplierDesc').innerHTML = `Source: <b class="text-amber-700">Project Site ${first.originSite}</b>`;
+      document.getElementById('inSupplierCode').value = first.originSite;
+      document.getElementById('inSupplierName').value = `TRANSFER SITE ${first.originSite}`;
+      document.getElementById('supplierSearchInput').value = `[SITE ${first.originSite}] TRANSFER SITE ${first.originSite}`;
+      document.getElementById('lblSelectedSupplierDesc').innerHTML = `Source: <b class="text-amber-700">Project Site ${first.originSite}</b>`;
 
-    document.getElementById('inNoDok').value = first.noSJ;
-    if (first.price !== undefined && first.price !== null) {
-      document.getElementById('inHarga').value = Number(first.price).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-    }
+      document.getElementById('inNoDok').value = first.noSJ;
+      if (first.price !== undefined && first.price !== null) {
+        document.getElementById('inHarga').value = Number(first.price).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+      }
 
-    const cartCont = document.getElementById('inboundCartContainer');
-    const listEl = document.getElementById('inboundCartList');
-    document.getElementById('inboundCartCount').innerText = inboundSJMatchedItems.length;
-    cartCont.classList.remove('hidden');
+      const cartCont = document.getElementById('inboundCartContainer');
+      const listEl = document.getElementById('inboundCartList');
+      document.getElementById('inboundCartCount').innerText = inboundSJMatchedItems.length;
+      cartCont.classList.remove('hidden');
 
-    listEl.innerHTML = inboundSJMatchedItems.map(it => `
-      <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-blue-200 text-xs">
-        <div>
-          <span class="font-bold text-slate-800 font-mono">${it.partNumber}</span>
-          <span class="text-blue-700 font-black font-mono ml-1">${Math.round(Number(it.qtyKirim)).toLocaleString('en-US')} L</span>
-          <span class="text-[10px] text-slate-400 block">${it.partDescription}</span>
-          <span class="text-[10px] text-emerald-600 font-bold block font-mono">Valuation: IDR ${Number(it.price || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}/L</span>
+      listEl.innerHTML = inboundSJMatchedItems.map(it => `
+        <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-blue-200 text-xs">
+          <div>
+            <span class="font-bold text-slate-800 font-mono">${it.partNumber}</span>
+            <span class="text-blue-700 font-black font-mono ml-1">${Math.round(Number(it.qtyKirim)).toLocaleString('en-US')} L</span>
+            <span class="text-[10px] text-slate-400 block">${it.partDescription}</span>
+            <span class="text-[10px] text-emerald-600 font-bold block font-mono">Valuation: IDR ${Number(it.price || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}/L</span>
+          </div>
+          <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-mono">ORIGIN ${it.originSite}</span>
         </div>
-        <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-mono">ORIGIN ${it.originSite}</span>
-      </div>
-    `).join('');
+      `).join('');
 
-    statusLbl.innerText = `✓ Found ${inboundSJMatchedItems.length} cargo items for Waybill ${first.noSJ}`;
-  } else {
-    statusLbl.innerText = "⚠️ " + (res.message || "Waybill not found in active dispatch registry.");
-    showModalAlert("Waybill Not Found", res.message || "Waybill not found or already verified.");
+      statusLbl.innerText = `✓ Found ${inboundSJMatchedItems.length} cargo items for Waybill ${first.noSJ}`;
+    } else {
+      statusLbl.innerText = "⚠️ " + (res.message || "Waybill not found in active dispatch registry.");
+      showModalAlert("Waybill Not Found", res.message || "Waybill not found or already verified.");
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origBtnHtml;
+      btn.classList.remove('opacity-70', 'cursor-not-allowed');
+    }
   }
 }
 
@@ -2298,22 +2315,41 @@ async function fetchStockBalancePreview() {
   const storageId = document.getElementById('balStorage').value;
   const tbody = document.getElementById('tableBalanceBody');
 
+  const btn = document.getElementById('btnCalcBalance');
+  let origBtnHtml = '';
+  if (btn) {
+    origBtnHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i><span>Calculating...</span>';
+    btn.classList.add('opacity-70', 'cursor-not-allowed');
+  }
+
   tbody.innerHTML = '<tr><td colspan="9" class="p-8 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Calculating inventory reconciliation...</td></tr>';
 
-  const res = await callBackend('GET_STOCK_BALANCE_PREVIEW', {
-    site: currentSite,
-    storageId: storageId,
-    month: month,
-    year: year
-  });
+  try {
+    const res = await callBackend('GET_STOCK_BALANCE_PREVIEW', {
+      site: currentSite,
+      storageId: storageId,
+      month: month,
+      year: year
+    });
 
-  if (res.success && res.data) {
-    balancePreviewData = res.data;
-    isPeriodLocked = (res.periodStatus === 'FINAL_LOCKED');
-    renderBalanceTable();
-    updateBalanceKpiSummary(res.periodStatus);
-  } else {
-    tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-rose-500 font-bold">${res.message || 'Failed to load reconciliation.'}</td></tr>`;
+    if (res.success && res.data) {
+      balancePreviewData = res.data;
+      isPeriodLocked = (res.periodStatus === 'FINAL_LOCKED');
+      renderBalanceTable();
+      updateBalanceKpiSummary(res.periodStatus);
+    } else {
+      tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-rose-500 font-bold">${res.message || 'Failed to load reconciliation.'}</td></tr>`;
+    }
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-rose-500 font-bold">Communication Error: ${err.message}</td></tr>`;
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origBtnHtml;
+      btn.classList.remove('opacity-70', 'cursor-not-allowed');
+    }
   }
 }
 
@@ -2912,94 +2948,112 @@ function transferInboundToPartInForm(noSJ) {
 async function fetchAllTankStocks() {
   const container = document.getElementById('tankCardsContainer');
   if (!container) return;
+
+  const btn = document.getElementById('btnRefreshTanks');
+  let origBtnHtml = '';
+  if (btn) {
+    origBtnHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-rotate fa-spin"></i><span>Syncing...</span>';
+    btn.classList.add('opacity-70', 'cursor-not-allowed');
+  }
+
   container.innerHTML = '<div class="col-span-full p-8 text-center text-slate-400"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Synchronizing storage balances...</div>';
 
-  const res = await callBackend('GET_ALL_TANK_STOCKS', { site: currentSite });
-  if (res.success && res.data) {
-    container.innerHTML = '';
-    if (res.data.length === 0) {
-      container.innerHTML = '<div class="col-span-full p-8 text-center text-slate-400">No storages registered for this site.</div>';
-      return;
+  try {
+    const res = await callBackend('GET_ALL_TANK_STOCKS', { site: currentSite });
+    if (res.success && res.data) {
+      container.innerHTML = '';
+      if (res.data.length === 0) {
+        container.innerHTML = '<div class="col-span-full p-8 text-center text-slate-400">No storages registered for this site.</div>';
+        return;
+      }
+
+      res.data.forEach(tank => {
+        let itemsHtml = '';
+        let totalQtyInTank = 0;
+
+        if (tank.items && tank.items.length > 0) {
+          tank.items.forEach(it => {
+            const q = Math.round(Number(it.qty) || 0);
+            totalQtyInTank += q;
+            itemsHtml += `
+              <div class="flex items-center justify-between text-xs py-2 border-b border-slate-100 last:border-0">
+                <div class="truncate pr-2">
+                  <p class="font-bold text-slate-800 truncate font-mono">${it.partNumber}</p>
+                  <p class="text-[10px] text-slate-400 truncate">${it.partDesc}</p>
+                </div>
+                <span class="font-black text-amber-700 text-sm whitespace-nowrap font-mono">${q.toLocaleString('en-US')} <span class="text-[10px] text-slate-400 font-sans">${it.satuan}</span></span>
+              </div>
+            `;
+          });
+        } else {
+          itemsHtml = '<p class="text-xs text-slate-400 italic py-4 text-center">Storage empty / no stock registered.</p>';
+        }
+
+        const refCap = tank.type === 'LUBE_TRUCK' ? 10000 : 30000;
+        const pct = Math.min(100, Math.max(0, Math.round((totalQtyInTank / refCap) * 100)));
+
+        let barColor = 'bg-emerald-500';
+        let statusBadge = '<span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Safe Stock</span>';
+        if (totalQtyInTank <= 0) {
+          barColor = 'bg-slate-300';
+          statusBadge = '<span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-slate-100 text-slate-500">Depleted</span>';
+        } else if (pct < 20) {
+          barColor = 'bg-rose-500';
+          statusBadge = '<span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-rose-50 text-rose-700 border border-rose-200 animate-pulse">Low Stock</span>';
+        } else if (pct < 50) {
+          barColor = 'bg-amber-500';
+          statusBadge = '<span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">Moderate</span>';
+        }
+
+        const isStoreOrWh = (tank.type === 'WAREHOUSE' || tank.type.includes('STORE') || tank.name.toUpperCase().includes('STORE') || tank.name.toUpperCase().includes('GUDANG') || tank.name.toUpperCase().includes('WAREHOUSE'));
+        const tankIconClass = tank.type === 'LUBE_TRUCK' ? 'fa-truck-fast' : (isStoreOrWh ? 'fa-warehouse' : 'fa-gas-pump');
+
+        const card = document.createElement('div');
+        card.className = "bg-white p-4.5 rounded-3xl shadow-sm border border-slate-200/80 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between";
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center text-base shadow-sm">
+                  <i class="fa-solid ${tankIconClass}"></i>
+                </div>
+                <div>
+                  <h4 class="font-black text-slate-900 text-sm leading-tight">${tank.name}</h4>
+                  <span class="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 font-mono tracking-wider">${tank.type}</span>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="text-xs font-mono font-bold text-slate-400 block">#${tank.id}</span>
+                ${statusBadge}
+              </div>
+            </div>
+
+            <div class="mb-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+              <div class="flex items-center justify-between text-[10px] font-semibold text-slate-500 mb-1">
+                <span>Capacity Level</span>
+                <span class="font-mono font-bold text-slate-700">${totalQtyInTank.toLocaleString('en-US')} L (${pct}%)</span>
+              </div>
+              <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                <div class="${barColor} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+              </div>
+            </div>
+
+            <div class="space-y-0.5 max-h-48 overflow-y-auto pr-1">
+              ${itemsHtml}
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
     }
-
-    res.data.forEach(tank => {
-      let itemsHtml = '';
-      let totalQtyInTank = 0;
-
-      if (tank.items && tank.items.length > 0) {
-        tank.items.forEach(it => {
-          const q = Math.round(Number(it.qty) || 0);
-          totalQtyInTank += q;
-          itemsHtml += `
-            <div class="flex items-center justify-between text-xs py-2 border-b border-slate-100 last:border-0">
-              <div class="truncate pr-2">
-                <p class="font-bold text-slate-800 truncate font-mono">${it.partNumber}</p>
-                <p class="text-[10px] text-slate-400 truncate">${it.partDesc}</p>
-              </div>
-              <span class="font-black text-amber-700 text-sm whitespace-nowrap font-mono">${q.toLocaleString('en-US')} <span class="text-[10px] text-slate-400 font-sans">${it.satuan}</span></span>
-            </div>
-          `;
-        });
-      } else {
-        itemsHtml = '<p class="text-xs text-slate-400 italic py-4 text-center">Storage empty / no stock registered.</p>';
-      }
-
-      const refCap = tank.type === 'LUBE_TRUCK' ? 10000 : 30000;
-      const pct = Math.min(100, Math.max(0, Math.round((totalQtyInTank / refCap) * 100)));
-
-      let barColor = 'bg-emerald-500';
-      let statusBadge = '<span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Safe Stock</span>';
-      if (totalQtyInTank <= 0) {
-        barColor = 'bg-slate-300';
-        statusBadge = '<span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-slate-100 text-slate-500">Depleted</span>';
-      } else if (pct < 20) {
-        barColor = 'bg-rose-500';
-        statusBadge = '<span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-rose-50 text-rose-700 border border-rose-200 animate-pulse">Low Stock</span>';
-      } else if (pct < 50) {
-        barColor = 'bg-amber-500';
-        statusBadge = '<span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">Moderate</span>';
-      }
-
-      const isStoreOrWh = (tank.type === 'WAREHOUSE' || tank.type.includes('STORE') || tank.name.toUpperCase().includes('STORE') || tank.name.toUpperCase().includes('GUDANG') || tank.name.toUpperCase().includes('WAREHOUSE'));
-      const tankIconClass = tank.type === 'LUBE_TRUCK' ? 'fa-truck-fast' : (isStoreOrWh ? 'fa-warehouse' : 'fa-gas-pump');
-
-      const card = document.createElement('div');
-      card.className = "bg-white p-4.5 rounded-3xl shadow-sm border border-slate-200/80 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between";
-      card.innerHTML = `
-        <div>
-          <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-            <div class="flex items-center gap-2.5">
-              <div class="w-10 h-10 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center text-base shadow-sm">
-                <i class="fa-solid ${tankIconClass}"></i>
-              </div>
-              <div>
-                <h4 class="font-black text-slate-900 text-sm leading-tight">${tank.name}</h4>
-                <span class="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 font-mono tracking-wider">${tank.type}</span>
-              </div>
-            </div>
-            <div class="text-right">
-              <span class="text-xs font-mono font-bold text-slate-400 block">#${tank.id}</span>
-              ${statusBadge}
-            </div>
-          </div>
-
-          <div class="mb-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-            <div class="flex items-center justify-between text-[10px] font-semibold text-slate-500 mb-1">
-              <span>Capacity Level</span>
-              <span class="font-mono font-bold text-slate-700">${totalQtyInTank.toLocaleString('en-US')} L (${pct}%)</span>
-            </div>
-            <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-              <div class="${barColor} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
-            </div>
-          </div>
-
-          <div class="space-y-0.5 max-h-48 overflow-y-auto pr-1">
-            ${itemsHtml}
-          </div>
-        </div>
-      `;
-      container.appendChild(card);
-    });
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origBtnHtml;
+      btn.classList.remove('opacity-70', 'cursor-not-allowed');
+    }
   }
 }
 
@@ -3196,6 +3250,35 @@ function openAboutModal() {
 }
 function closeAboutModal() {
   document.getElementById('modalAboutSystem')?.classList.add('hidden');
+}
+
+// ==========================================
+// 18.1. SYSTEM REFRESH & CACHE SYNC
+// ==========================================
+async function refreshSystemData(isUserClick = false) {
+  const btn = document.getElementById('btnSystemRefresh');
+  const icon = btn ? btn.querySelector('i') : null;
+  if (icon) icon.classList.add('fa-spin', 'text-amber-400');
+  if (btn) btn.disabled = true;
+
+  try {
+    await fetchInitialMasterData();
+    initAppDashboard();
+    if (isUserClick) {
+      showModalAlert(
+        "System Refreshed",
+        "✓ Master repository (Units, Items, Suppliers, Storages) and real-time tank balances have been successfully re-synchronized.\n\nTip: If you recently committed code updates to GitHub, press Ctrl + F5 for a complete browser cache reload.",
+        true
+      );
+    }
+  } catch (err) {
+    if (isUserClick) {
+      showModalAlert("Refresh Error", "Failed to re-sync data: " + err.message);
+    }
+  } finally {
+    if (icon) icon.classList.remove('fa-spin', 'text-amber-400');
+    if (btn) btn.disabled = false;
+  }
 }
 
 // ==========================================
