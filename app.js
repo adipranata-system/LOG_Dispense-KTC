@@ -947,15 +947,21 @@ document.addEventListener('click', function(e) {
 // ==========================================
 async function queryLiveStock(storageId, partNumber, labelElemId, isTransfer = false) {
   const label = document.getElementById(labelElemId);
+  const itemMeta = liveItems.find(i => String(i.partNumber) === String(partNumber));
+  const rawSatuan = String(itemMeta?.satuan || 'LTR').trim().toUpperCase();
+  const unitTxt = (rawSatuan === 'KG' || rawSatuan === 'KGM') ? 'Kg' : 'L';
+
   if (!storageId || !partNumber) {
-    label.innerHTML = isTransfer ? 'Available: <span class="text-amber-700 font-mono">0 L</span>' : 'Available: <span class="text-amber-700 font-mono">0 Liters</span>';
+    label.innerHTML = isTransfer 
+      ? `Available: <span class="text-amber-700 font-mono">0 ${unitTxt}</span>` 
+      : `Available: <span class="text-amber-700 font-mono">0 ${unitTxt}</span>`;
     if (!isTransfer) currentAvailableStock = 0;
     return 0;
   }
   label.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...';
   const res = await callBackend('CHECK_STOCK', { site: currentSite, storageId: storageId, partNumber: partNumber });
   const stock = res.success ? Math.round(Number(res.stock) || 0) : 0;
-  label.innerHTML = `Available: <span class="text-amber-700 font-bold font-mono">${stock.toLocaleString('en-US')} L</span>`;
+  label.innerHTML = `Available: <span class="text-amber-700 font-bold font-mono">${stock.toLocaleString('en-US')} ${unitTxt}</span>`;
   if (!isTransfer) {
     currentAvailableStock = stock;
     validateAntiMinus(document.getElementById('outQty').value);
@@ -964,13 +970,67 @@ async function queryLiveStock(storageId, partNumber, labelElemId, isTransfer = f
 }
 
 function triggerCheckStock() {
-  queryLiveStock(document.getElementById('outStorage').value, document.getElementById('outPart').value, 'labelLiveStock', false);
+// 7.5. Transfer Part Combobox
+function renderTrfPartDropdownItems(items, idx = -1) {
+  currentFilteredTrfParts = items || [];
+  activeTrfPartIndex = idx;
+  genericRenderPartDropdown('trfPartDropdownList', currentFilteredTrfParts, activeTrfPartIndex, 'selectTrfPartItem', 'bg-amber-100/80');
 }
-function triggerCheckTransferStock() {
-  queryLiveStock(document.getElementById('trfFromStorage').value, document.getElementById('trfPart').value, 'labelTrfStock', true);
+function openTrfPartDropdown() {
+  document.getElementById('trfPartDropdownList').classList.remove('hidden');
+  filterTrfPartDropdown(document.getElementById('trfPartSearchInput').value.trim());
 }
-function triggerCheckReturnStock() {
-  queryLiveStock(document.getElementById('retStorage').value, document.getElementById('retPart').value, 'labelRetLiveStock', false);
+function filterTrfPartDropdown(kw) {
+  const q = (kw || '').toLowerCase().trim();
+  const filtered = liveItems.filter(p => `${p.partNumber} ${p.partDesc || ''}`.toLowerCase().includes(q));
+  activeTrfPartIndex = filtered.length > 0 ? 0 : -1;
+  renderTrfPartDropdownItems(filtered, activeTrfPartIndex);
+}
+function handleTrfPartKeydown(e) {
+  activeTrfPartIndex = genericHandleKeydown(e, 'trfPartDropdownList', currentFilteredTrfParts, activeTrfPartIndex, selectTrfPartItem, (l, i) => renderTrfPartDropdownItems(l, i));
+}
+function selectTrfPartItem(partNum) {
+  const p = liveItems.find(item => String(item.partNumber) === String(partNum));
+  if (!p) return;
+  document.getElementById('trfPart').value = p.partNumber;
+  document.getElementById('trfPartSearchInput').value = `${p.partNumber} — ${p.partDesc || ''}`;
+  document.getElementById('labelTrfPartDesc').innerText = p.partDesc || '-';
+  document.getElementById('btnClearTrfPart').classList.remove('hidden');
+  document.getElementById('trfPartDropdownList').classList.add('hidden');
+
+  // Deteksi Satuan Otomatis (Kg vs L)
+  const rawSatuan = String(p.satuan || 'LTR').trim().toUpperCase();
+  const isKg = (rawSatuan === 'KG' || rawSatuan === 'KGM');
+  const unitBadge = isKg ? 'Kg' : 'L';
+  const unitFull = isKg ? 'Kilograms' : 'Liters';
+
+  const lblUnit = document.getElementById('lblTrfUnit');
+  if (lblUnit) lblUnit.innerText = unitFull;
+
+  const lblTitle = document.getElementById('lblTrfQtyTitle');
+  if (lblTitle) lblTitle.innerHTML = `${isKg ? 'Weight' : 'Volume'} (${unitBadge}) <span class="text-rose-500">*</span>`;
+
+  triggerCheckTransferStock();
+  const nextInput = document.getElementById('trfQty');
+  if (nextInput) { nextInput.focus(); nextInput.select(); }
+}
+function clearTrfPartSelection(shouldFocus = false) {
+  document.getElementById('trfPart').value = '';
+  document.getElementById('trfPartSearchInput').value = '';
+  document.getElementById('labelTrfPartDesc').innerText = '-';
+  document.getElementById('labelTrfStock').innerHTML = 'Available: <span class="text-amber-700 font-mono">0 L</span>';
+
+  const lblUnit = document.getElementById('lblTrfUnit');
+  if (lblUnit) lblUnit.innerText = 'Liters';
+
+  const lblTitle = document.getElementById('lblTrfQtyTitle');
+  if (lblTitle) lblTitle.innerHTML = 'Volume (Liters) <span class="text-rose-500">*</span>';
+
+  document.getElementById('btnClearTrfPart').classList.add('hidden');
+  const drop = document.getElementById('trfPartDropdownList');
+  if (drop) drop.classList.add('hidden');
+  renderTrfPartDropdownItems(liveItems);
+  if (shouldFocus) document.getElementById('trfPartSearchInput').focus();
 }
 
 function validateAntiMinus(val) {
@@ -1784,15 +1844,16 @@ function addOliToTransferCart() {
 
   if (!fromSt) { showModalAlert("Select Origin Storage", "Please select origin storage first."); return; }
   if (!partNum) { showModalAlert("Select Lubricant", "Please select lubricant product to transfer."); return; }
-  if (qty <= 0) { showModalAlert("Invalid Volume", "Transfer volume must be an integer greater than 0 L."); return; }
+  if (qty <= 0) { showModalAlert("Invalid Volume", "Transfer quantity must be an integer greater than 0."); return; }
 
-  const itemMeta = liveItems.find(i => i.partNumber === partNum) || { partDesc: partNum, defaultPrice: 0 };
+  const itemMeta = liveItems.find(i => i.partNumber === partNum) || { partDesc: partNum, defaultPrice: 0, satuan: 'LTR' };
   transferCart.push({
     fromStorage: fromSt,
     partNumber: partNum,
     partDescription: itemMeta.partDesc,
     qty: qty,
-    price: itemMeta.defaultPrice || 0
+    price: itemMeta.defaultPrice || 0,
+    satuan: itemMeta.satuan || 'LTR'
   });
 
   renderTransferCart();
@@ -1813,18 +1874,23 @@ function renderTransferCart() {
   container.classList.remove('hidden');
   countEl.innerText = transferCart.length;
 
-  listEl.innerHTML = transferCart.map((item, idx) => `
-    <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-slate-200 text-xs">
-      <div class="truncate pr-2">
-        <span class="font-bold text-slate-800 font-mono">${item.partNumber}</span>
-        <span class="text-amber-700 font-black font-mono ml-1.5">${item.qty.toLocaleString('en-US')} L</span>
-        <span class="text-[10px] text-slate-400 block">${item.partDescription} (From ${item.fromStorage})</span>
+  listEl.innerHTML = transferCart.map((item, idx) => {
+    const rawSatuan = String(item.satuan || 'LTR').trim().toUpperCase();
+    const unitBadge = (rawSatuan === 'KG' || rawSatuan === 'KGM') ? 'Kg' : 'L';
+
+    return `
+      <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-slate-200 text-xs">
+        <div class="truncate pr-2">
+          <span class="font-bold text-slate-800 font-mono">${item.partNumber}</span>
+          <span class="text-amber-700 font-black font-mono ml-1.5">${item.qty.toLocaleString('en-US')} ${unitBadge}</span>
+          <span class="text-[10px] text-slate-400 block">${item.partDescription} (From ${item.fromStorage})</span>
+        </div>
+        <button type="button" onclick="removeTransferCartItem(${idx})" class="text-rose-500 hover:text-rose-700 p-1">
+          <i class="fa-solid fa-trash-can text-[11px]"></i>
+        </button>
       </div>
-      <button type="button" onclick="removeTransferCartItem(${idx})" class="text-rose-500 hover:text-rose-700 p-1">
-        <i class="fa-solid fa-trash-can text-[11px]"></i>
-      </button>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 function removeTransferCartItem(idx) {
