@@ -2574,6 +2574,7 @@ async function saveStockBalanceData(isLockFinal) {
       month: month,
       year: year,
       role: effectiveRole,
+      isLockFinal: isLockFinal,
       items: balancePreviewData,
       setAsNextOpening: setOpening,
       nextCutOffDate: nextInfo.isoDate,
