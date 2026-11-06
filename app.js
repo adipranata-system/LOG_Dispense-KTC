@@ -3053,7 +3053,9 @@ async function fetchAllTankStocks() {
           itemsHtml = '<p class="text-xs text-slate-400 italic py-4 text-center">Storage empty / no stock registered.</p>';
         }
 
-        const refCap = tank.type === 'LUBE_TRUCK' ? 10000 : 30000;
+        // Membaca kapasitas spesifik dari master m_storages (Kolom E), fallback jika kosong
+        const defaultCap = (tank.type === 'LUBE_TRUCK') ? 8000 : 30000;
+        const refCap = (tank.capacity && Number(tank.capacity) > 0) ? Number(tank.capacity) : defaultCap;
         const pct = Math.min(100, Math.max(0, Math.round((totalQtyInTank / refCap) * 100)));
 
         let barColor = 'bg-emerald-500';
@@ -3095,7 +3097,7 @@ async function fetchAllTankStocks() {
             <div class="mb-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
               <div class="flex items-center justify-between text-[10px] font-semibold text-slate-500 mb-1">
                 <span>Capacity Level</span>
-                <span class="font-mono font-bold text-slate-700">${totalQtyInTank.toLocaleString('en-US')} L (${pct}%)</span>
+                <span class="font-mono font-bold text-slate-700">${totalQtyInTank.toLocaleString('en-US')} L / ${refCap.toLocaleString('en-US')} L (${pct}%)</span>
               </div>
               <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
                 <div class="${barColor} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
