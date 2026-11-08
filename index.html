@@ -488,7 +488,7 @@
                 </div>
 
                 <div>
-                  <label class="form-label-sm">Dispense Volume (L) <span class="text-rose-500">*</span></label>
+                  <label class="form-label-sm">Dispense Volume (L/Kg) <span class="text-rose-500">*</span></label>
                   <div class="flex items-center gap-1.5">
                     <input type="number" step="1" min="1" id="outQty" placeholder="0" oninput="validateAntiMinus(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('outKet').focus();}" class="form-input-sm font-mono font-bold text-slate-900">
                     <button type="button" onclick="addOliToServiceCart()" title="Add item to multi-part PM Service batch" class="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold rounded-xl text-[11px] whitespace-nowrap transition-all shadow-sm">
@@ -981,7 +981,7 @@
                 </div>
 
                 <div class="col-span-5">
-                  <label id="lblTrfQtyTitle" class="form-label-sm">Volume (Liters) <span class="text-rose-500">*</span></label>
+                  <label id="lblTrfQtyTitle" class="form-label-sm">Volume (L/Kg) <span class="text-rose-500">*</span></label>
                   <div class="flex items-center gap-1.5">
                     <input type="number" step="1" min="1" id="trfQty" placeholder="0" class="form-input-sm font-mono font-bold text-slate-900">
                     <button type="button" onclick="addOliToTransferCart()" title="Queue item for batch transfer" class="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold rounded-xl text-xs whitespace-nowrap transition-all shadow-sm">
@@ -1216,7 +1216,7 @@
               <!-- VENDOR RETUR: POSISI PRICE BERDAMPINGAN DENGAN VOLUME TEPAT SETELAH PART NUMBER -->
               <div id="panelVendorPriceQty" class="hidden grid grid-cols-2 gap-2.5">
                 <div>
-                  <label class="form-label-sm">Return Volume (L) <span class="text-rose-500">*</span></label>
+                  <label class="form-label-sm">Return Volume (L/Kg) <span class="text-rose-500">*</span></label>
                   <input type="number" step="1" min="1" id="retVendorQty" placeholder="0" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('retHarga').focus();}" class="form-input-sm font-mono font-bold text-slate-900">
                 </div>
                 <div>
@@ -1228,7 +1228,7 @@
               <!-- FLEET RETUR: VOLUME & OPERATOR (AKTIF SAAT MODE FLEET) -->
               <div id="panelFleetQtyPetugas" class="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label class="form-label-sm">Return Volume (L) <span class="text-rose-500">*</span></label>
+                  <label class="form-label-sm">Return Volume (L/Kg) <span class="text-rose-500">*</span></label>
                   <input type="number" step="1" min="1" id="retQty" placeholder="0" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('retPetugas').focus();}" class="form-input-sm font-mono font-bold text-slate-900">
                 </div>
                 <div>
