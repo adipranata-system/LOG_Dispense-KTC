@@ -3253,22 +3253,50 @@ async function executeDownloadCSV() {
     }
   }
 
-  let csvContent = "\uFEFF";
+  let csvContent = "\uFEFF"; // UTF-8 with BOM for Excel compatibility
   csvContent += exportHeaders.map(h => `"${h}"`).join(";") + "\r\n";
+
   exportRows.forEach(row => {
-    csvContent += row.map(val => `"${val !== null && val !== undefined ? String(val).replace(/"/g, '""') : ''}"`).join(";") + "\r\n";
+    const formattedCells = row.map(val => {
+      if (val === null || val === undefined) return '""';
+
+      // 1. Jika tipe data berupa Angka / Numerik:
+      if (typeof val === 'number') {
+        // Jika angka bulat (atau ekor desimal floating point js seperti .99999999):
+        if (Math.abs(val - Math.round(val)) < 0.00001) {
+          return String(Math.round(val)); // Tulis angka murni tanpa petik ganda
+        }
+        // Jika angka pecahan asli: ubah titik jadi koma desimal khas Excel Indonesia
+        return String(Number(val.toFixed(2))).replace('.', ',');
+      }
+
+      // 2. Jika tipe data berupa Teks biasa:
+      const strVal = String(val).trim();
+
+      // Cek jika teks berisi murni angka/desimal (misal: "35000" atau "35000.5"):
+      if (!isNaN(strVal) && strVal !== '') {
+        const numVal = parseFloat(strVal);
+        if (Math.abs(numVal - Math.round(numVal)) < 0.00001) {
+          return String(Math.round(numVal));
+        }
+        return String(Number(numVal.toFixed(2))).replace('.', ',');
+      }
+
+      // Teks string dibungkus tanda petik ganda standar CSV
+      return `"${strVal.replace(/"/g, '""')}"`;
+    });
+
+    csvContent += formattedCells.join(";") + "\r\n";
   });
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  link.href = url;
-  link.download = `Report_${reportType}_${currentSite}.csv`;
+  link.setAttribute("href", url);
+  link.setAttribute("download", `${exportFilename}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-
-  closeExportModal();
 }
 
 // ==========================================
