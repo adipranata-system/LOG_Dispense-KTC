@@ -127,13 +127,16 @@ async function submitLogin() {
     if (isSuper) {
       if (siteSelect) { siteSelect.classList.remove('hidden'); siteSelect.disabled = false; }
       if (siteBadge) siteBadge.classList.add('hidden');
+      document.getElementById('nav-report')?.classList.remove('hidden');
       document.getElementById('btnFinalLock')?.classList.remove('hidden');
       document.getElementById('superadminClosePeriodSection')?.classList.remove('hidden');
       document.getElementById('superadminBatchAction')?.classList.remove('hidden');
       document.getElementById('balanceKpiContainer')?.classList.remove('hidden');
+      if (typeof initExecutiveReportTab === 'function') initExecutiveReportTab();
     } else {
       if (siteSelect) { siteSelect.classList.add('hidden'); siteSelect.disabled = true; }
       if (siteBadge) { siteBadge.classList.remove('hidden'); siteBadge.innerText = `SITE ${currentSite}`; }
+      document.getElementById('nav-report')?.classList.add('hidden');
       document.getElementById('btnFinalLock')?.classList.add('hidden');
       document.getElementById('superadminClosePeriodSection')?.classList.add('hidden');
       document.getElementById('superadminBatchAction')?.classList.add('hidden');
@@ -171,6 +174,7 @@ function switchSite(newSite) {
   if (currentRole !== 'SUPERADMIN') return;
   currentSite = newSite;
   document.getElementById('lblUserRoleSite').innerText = `${currentRole} • SITE ${currentSite}`;
+  if (typeof execReportData !== 'undefined') execReportData = null;
   filterToSiteOptions();
   fetchInitialMasterData();
   initAppDashboard();
@@ -284,7 +288,8 @@ function switchTab(targetTabId) {
   if (targetPane) targetPane.classList.remove('hidden');
 
   document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.className = "nav-btn px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 font-semibold flex items-center gap-2 transition-all";
+    const keepHidden = (btn.id === 'nav-report' && currentRole !== 'SUPERADMIN') ? 'hidden ' : '';
+    btn.className = `${keepHidden}nav-btn px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 font-semibold flex items-center gap-2 transition-all`;
     const icon = btn.querySelector('i');
     if (icon) icon.className = icon.className.replace('text-amber-600', '');
   });
@@ -295,7 +300,8 @@ function switchTab(targetTabId) {
     'tab-in': 'nav-in',
     'tab-transfer': 'nav-transfer',
     'tab-return': 'nav-return',
-    'tab-balance': 'nav-balance'
+    'tab-balance': 'nav-balance',
+    'tab-report': 'nav-report'
   };
 
   const activeBtn = document.getElementById(navBtnMap[targetTabId]);
@@ -311,6 +317,8 @@ function switchTab(targetTabId) {
     fetchRecentMutasi();
   } else if (targetTabId === 'tab-return') {
     fetchRecentReturns();
+  } else if (targetTabId === 'tab-report') {
+    if (typeof initExecutiveReportTab === 'function') initExecutiveReportTab();
   }
 }
 
