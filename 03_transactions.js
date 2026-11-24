@@ -1000,12 +1000,14 @@ function toggleReturnType(mode) {
   const bannerTxt = document.getElementById('bannerReturnModeTxt');
   const lblStorage = document.getElementById('lblRetStorage');
   const btnLbl = document.getElementById('lblBtnSubmitReturn');
+  const retPetugasEl = document.getElementById('retPetugas');
 
   if (mode === 'VENDOR') {
     pFleet?.classList.add('hidden');
     pVendor?.classList.remove('hidden');
     pVendorPrice?.classList.remove('hidden');
     pFleetQty?.classList.add('hidden');
+    if (retPetugasEl) retPetugasEl.required = false;
 
     if (lblStorage) lblStorage.innerHTML = 'Source Storage (Stock Deducted) <span class="text-rose-500">*</span>';
     if (bannerTxt) {
@@ -1017,6 +1019,7 @@ function toggleReturnType(mode) {
     pVendor?.classList.add('hidden');
     pVendorPrice?.classList.add('hidden');
     pFleetQty?.classList.remove('hidden');
+    if (retPetugasEl) retPetugasEl.required = true;
 
     if (lblStorage) lblStorage.innerHTML = 'Receiving Storage (Target Tank) <span class="text-rose-500">*</span>';
     if (bannerTxt) {
