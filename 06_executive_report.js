@@ -2,7 +2,6 @@
  * ============================================================================
  * MODUL 6: EXECUTIVE PDF REPORT & HYBRID AI ENGINE (06_executive_report.js)
  * LOG DISPENSE MANAGEMENT SYSTEM v3.5 ENTERPRISE
- * PT.KTC Coal Mining & Energy
  * Architect & Lead Engineer: Adi Pranata
  * ============================================================================
  */
@@ -544,7 +543,9 @@ function renderExecutiveReportPaper() {
     const tankSections = (d.storageLedgers && d.storageLedgers.length > 0)
       ? d.storageLedgers.map((st, sIdx) => {
           const letter = String.fromCharCode(65 + sIdx);
-          const rowsHtml = st.rows.map(rw => `
+          const rowsHtml = st.rows.map(rw => {
+            const cleanRemarks = String(rw.remarks || '').replace(/^(\[RETURN UNIT\]\s*)+/i, '[RETURN UNIT] ');
+            return `
             <tr class="border-b border-slate-200/80 even:bg-slate-50/50 avoid-page-break">
               <td class="py-1 px-2 font-mono whitespace-nowrap text-slate-600">${rw.tanggal}</td>
               <td class="py-1 px-2 font-mono font-semibold text-slate-800 whitespace-nowrap">${rw.docOrUnit}</td>
@@ -554,9 +555,10 @@ function renderExecutiveReportPaper() {
               </td>
               <td class="py-1 px-2 text-right font-mono font-bold text-blue-700">${rw.qtyIn > 0 ? '+' + rw.qtyIn.toLocaleString('id-ID') : '-'}</td>
               <td class="py-1 px-2 text-right font-mono font-bold text-amber-800">${rw.qtyOut > 0 ? '-' + rw.qtyOut.toLocaleString('id-ID') : '-'}</td>
-              <td class="py-1 px-2 text-slate-600 text-[9.5px]">${rw.remarks}</td>
+              <td class="py-1 px-2 text-slate-600 text-[9.5px]">${cleanRemarks}</td>
             </tr>
-          `).join('');
+          `;
+          }).join('');
 
           return `
             <div class="mb-5">
@@ -591,8 +593,8 @@ function renderExecutiveReportPaper() {
       : '<p class="text-xs text-slate-400 italic">Tidak ada aktivitas transaksi harian pada rentang tanggal ini.</p>';
 
     bab5Html = `
-      <div class="page-break-before pt-4">
-        <div class="border-b-2 border-slate-900 pb-1.5 mb-3 flex items-center justify-between">
+      <div class="pt-3">
+        <div class="border-b-2 border-slate-900 pb-1.5 mb-3 flex items-center justify-between avoid-page-break">
           <h2 class="text-sm font-black uppercase tracking-wider text-slate-900">BAB V. LAMPIRAN RINCIAN MUTASI & TRANSAKSI HARIAN PER TANGKI</h2>
           <span class="text-[10px] font-mono text-slate-500">Site ${m.site} • ${m.fromDate} s.d. ${m.toDate}</span>
         </div>
@@ -693,8 +695,8 @@ function renderExecutiveReportPaper() {
       </div>
 
       <!-- BAB III: ANALISIS KONSUMSI ARMADA ALAT BERAT -->
-      <div class="mb-6 page-break-before pt-2">
-        <div class="border-b-2 border-slate-800 pb-1 mb-2.5">
+      <div class="mb-6 pt-2">
+        <div class="border-b-2 border-slate-800 pb-1 mb-2.5 avoid-page-break">
           <h2 class="text-sm font-black uppercase tracking-wider text-slate-900">BAB III. ANALISIS KONSUMSI ARMADA ALAT BERAT & PERUNTUKAN KERJA</h2>
         </div>
 
@@ -746,7 +748,7 @@ function renderExecutiveReportPaper() {
 
       <!-- BAB IV: PASOKAN VENDOR, MUTASI & AUDIT KOREKSI -->
       <div class="mb-6">
-        <div class="border-b-2 border-slate-800 pb-1 mb-2.5">
+        <div class="border-b-2 border-slate-800 pb-1 mb-2.5 avoid-page-break">
           <h2 class="text-sm font-black uppercase tracking-wider text-slate-900">BAB IV. REKAPITULASI PASOKAN VENDOR, MUTASI LOGISTIK & AUDIT KOREKSI</h2>
         </div>
 
@@ -830,7 +832,7 @@ function renderExecutiveReportPaper() {
           </div>
           <div class="text-right text-[9.5px] text-slate-400">
             <p class="font-bold text-slate-700">LOG Dispense Management System v3.5</p>
-            <p>PT.KTC Coal Mining & Energy</p>
+            <p>AP Systems • Independent Initiative</p>
           </div>
         </div>
         ${manualSignatureHtml}
@@ -849,6 +851,36 @@ function renderExecutiveReportPaper() {
 // ==========================================
 // 6. DIRECT PDF GENERATOR (A4 LANDSCAPE - ZERO URL & MPS FOOTER)
 // ==========================================
+function loadLogoDataUrl_(src) {
+  return new Promise(resolve => {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = function () {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || 200;
+          canvas.height = img.naturalHeight || 80;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          resolve({
+            dataUrl: canvas.toDataURL('image/png'),
+            ratio: (img.naturalWidth && img.naturalHeight) ? (img.naturalWidth / img.naturalHeight) : 2.4
+          });
+        } catch (e) {
+          resolve(null);
+        }
+      };
+      img.onerror = function () {
+        resolve(null);
+      };
+      img.src = src;
+    } catch (e) {
+      resolve(null);
+    }
+  });
+}
+
 async function printExecutiveReportPDF() {
   if (currentRole !== 'SUPERADMIN') return;
 
@@ -869,6 +901,7 @@ async function printExecutiveReportPDF() {
   }
 
   try {
+    const logoObj = await loadLogoDataUrl_('logo-ktc.png');
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({
       orientation: 'landscape',
@@ -901,7 +934,7 @@ async function printExecutiveReportPDF() {
     }
 
     function drawChapterHeader(titleText, accentRgb = [15, 23, 42]) {
-      ensureSpace(14);
+      ensureSpace(16);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10.5);
       doc.setTextColor(accentRgb[0], accentRgb[1], accentRgb[2]);
@@ -932,33 +965,41 @@ async function printExecutiveReportPDF() {
     }
 
     // ------------------------------------------
-    // KOP SURAT RESMI PERUSAHAAN (HALAMAN 1)
+    // KOP SURAT & LOGO PERUSAHAAN (HALAMAN 1)
     // ------------------------------------------
+    let headerTextX = marginX;
+    if (logoObj && logoObj.dataUrl) {
+      const logoH = 11.5;
+      const logoW = Math.min(34, logoH * logoObj.ratio);
+      doc.addImage(logoObj.dataUrl, 'PNG', marginX, curY - 1.5, logoW, logoH);
+      headerTextX = marginX + logoW + 3.5;
+    }
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(180, 83, 9);
-    doc.text('PT. KTC COAL MINING & ENERGY | LOGISTICS & WORKSHOP DIVISION', marginX, curY);
+    doc.text(`PT. KTC COAL MINING & ENERGY  •  PROJECT SITE ${m.site}`, headerTextX, curY + 1);
 
     doc.setFontSize(8);
     doc.setTextColor(30, 41, 59);
     const statusText = m.periodStatus === 'FINAL_LOCKED' ? 'STATUS: FINAL LOCKED (CLOSED)' : 'STATUS: DRAFT / RUNNING';
-    doc.text(statusText, pageWidth - marginX, curY, { align: 'right' });
+    doc.text(statusText, pageWidth - marginX, curY + 1, { align: 'right' });
 
-    curY += 5;
-    doc.setFontSize(13);
+    curY += 5.5;
+    doc.setFontSize(12.5);
     doc.setTextColor(15, 23, 42);
     const mainTitle = m.reportMode === 'WEEKLY'
       ? 'LAPORAN OPERASIONAL MINGGUAN LOGISTIK PELUMAS (WEEKLY TACTICAL REVIEW)'
       : 'LAPORAN EKSEKUTIF MANAJEMEN LOGISTIK PELUMAS (MONTHLY MANAGEMENT AUDIT)';
-    doc.text(mainTitle, marginX, curY);
+    doc.text(mainTitle, headerTextX, curY);
 
     curY += 4.5;
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
+    doc.setFontSize(8.2);
     doc.setTextColor(71, 85, 105);
-    doc.text(`Site: ${m.site} | Model Filter: ${m.modelFilter} | Periode: ${m.fromDate} s.d. ${m.toDate} | Acuan Tutup Buku: ${m.refMonth} ${m.refYear} | Penyusun: ${currentFullName || 'Adi Pranata'}`, marginX, curY);
+    doc.text(`Model Filter: ${m.modelFilter} | Periode: ${m.fromDate} s.d. ${m.toDate} | Acuan Tutup Buku: ${m.refMonth} ${m.refYear} | Penyusun: ${currentFullName || 'Adi Pranata'}`, headerTextX, curY);
 
-    curY += 2.5;
+    curY += 2.8;
     doc.setDrawColor(15, 23, 42);
     doc.setLineWidth(0.8);
     doc.line(marginX, curY, pageWidth - marginX, curY);
@@ -1064,7 +1105,7 @@ async function printExecutiveReportPDF() {
       const tankGroups = Object.values(tankGroupsMap).sort((a, b) => a.storageId.localeCompare(b.storageId));
 
       tankGroups.forEach((grp, gIdx) => {
-        ensureSpace(22);
+        ensureSpace(34);
         // Header Sub-Bab Tangki
         doc.setFillColor(30, 41, 59);
         doc.rect(marginX, curY, contentWidth, 6, 'F');
@@ -1126,7 +1167,7 @@ async function printExecutiveReportPDF() {
       });
 
       // Grand Total Bar Site
-      ensureSpace(10);
+      ensureSpace(12);
       doc.setFillColor(15, 23, 42);
       doc.roundedRect(marginX, curY, contentWidth, 7.5, 1.5, 1.5, 'F');
       doc.setFont('helvetica', 'bold');
@@ -1136,24 +1177,27 @@ async function printExecutiveReportPDF() {
       doc.setTextColor(252, 211, 77);
       const grandStr = `Akhir Buku: ${k.totalBookEndingQty.toLocaleString('id-ID')} L   |   Sounding: ${k.totalSoundingQty.toLocaleString('id-ID')} L   |   Selisih: ${k.totalDiscrepancyQty > 0 ? '+' : ''}${k.totalDiscrepancyQty.toLocaleString('id-ID')} L   |   Valuasi: Rp ${k.totalBookEndingValue.toLocaleString('id-ID')}`;
       doc.text(grandStr, pageWidth - marginX - 3, curY + 5, { align: 'right' });
-      curY += 11;
+      curY += 12;
     }
 
     // ------------------------------------------
-    // BAB III. ANALISIS KONSUMSI ARMADA ALAT BERAT
+    // BAB III. ANALISIS KONSUMSI ARMADA ALAT BERAT (SMART FLOW)
     // ------------------------------------------
-    doc.addPage();
-    curY = 14;
+    ensureSpace(55);
     drawChapterHeader('BAB III. ANALISIS KONSUMSI ARMADA ALAT BERAT & PERUNTUKAN KERJA', [180, 83, 9]);
     drawNarrativeBox(nar.chapter3 || '-', [180, 83, 9]);
 
-    // 3.1 Proporsi Konsumsi per Model
-    ensureSpace(12);
+    // 3.1 Proporsi Konsumsi per Model (Dengan Grafik Batang Mini Visual)
+    ensureSpace(16);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
     doc.text('3.1. Proporsi Konsumsi per Model Alat Berat', marginX, curY);
     curY += 2.5;
+
+    const maxModelShare = (d.modelBreakdown && d.modelBreakdown.length > 0)
+      ? Math.max(...d.modelBreakdown.map(x => Number(x.sharePct) || 0), 1)
+      : 100;
 
     doc.autoTable({
       startY: curY,
@@ -1174,14 +1218,30 @@ async function printExecutiveReportPDF() {
       columnStyles: {
         1: { halign: 'center' },
         2: { halign: 'right', fontStyle: 'bold' },
-        3: { halign: 'right' },
+        3: { halign: 'right', cellWidth: 42 },
         4: { halign: 'right', fontStyle: 'bold' }
+      },
+      didDrawCell: function (data) {
+        if (data.section === 'body' && data.column.index === 3 && d.modelBreakdown && d.modelBreakdown[data.row.index]) {
+          const pctVal = Number(d.modelBreakdown[data.row.index].sharePct) || 0;
+          const barMaxW = 20;
+          const barH = 2.6;
+          const bx = data.cell.x + 2.5;
+          const by = data.cell.y + (data.cell.height / 2) - (barH / 2);
+
+          doc.setFillColor(226, 232, 240);
+          doc.rect(bx, by, barMaxW, barH, 'F');
+
+          const fillW = Math.max(0.8, (pctVal / maxModelShare) * barMaxW);
+          doc.setFillColor(217, 119, 6);
+          doc.rect(bx, by, fillW, barH, 'F');
+        }
       }
     });
     curY = doc.lastAutoTable.finalY + 5;
 
     // 3.2 Rekapitulasi Peruntukan
-    ensureSpace(12);
+    ensureSpace(16);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
@@ -1214,7 +1274,7 @@ async function printExecutiveReportPDF() {
     curY = doc.lastAutoTable.finalY + 5;
 
     // 3.3 Top 10 Unit Watchlist
-    ensureSpace(14);
+    ensureSpace(18);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
@@ -1252,13 +1312,14 @@ async function printExecutiveReportPDF() {
     curY = doc.lastAutoTable.finalY + 7;
 
     // ------------------------------------------
-    // BAB IV. REKAPITULASI PASOKAN VENDOR, MUTASI & AUDIT KOREKSI
+    // BAB IV. REKAPITULASI PASOKAN VENDOR, MUTASI & AUDIT KOREKSI (SMART FLOW)
     // ------------------------------------------
+    ensureSpace(55);
     drawChapterHeader('BAB IV. REKAPITULASI PASOKAN VENDOR, MUTASI LOGISTIK & AUDIT KOREKSI', [4, 120, 87]);
     drawNarrativeBox(nar.chapter4 || '-', [4, 120, 87]);
 
     // 4.1 Vendor Summary (Tanpa Kolom NO)
-    ensureSpace(12);
+    ensureSpace(16);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
@@ -1289,7 +1350,7 @@ async function printExecutiveReportPDF() {
     curY = doc.lastAutoTable.finalY + 5;
 
     // 4.2 Log Mutasi Internal & Antar Site
-    ensureSpace(12);
+    ensureSpace(16);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
@@ -1322,7 +1383,7 @@ async function printExecutiveReportPDF() {
     curY = doc.lastAutoTable.finalY + 5;
 
     // 4.3 Catatan Audit Koreksi & Return
-    ensureSpace(12);
+    ensureSpace(16);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
@@ -1351,23 +1412,22 @@ async function printExecutiveReportPDF() {
         4: { halign: 'right', fontStyle: 'bold', cellWidth: 24 }
       }
     });
-    curY = doc.lastAutoTable.finalY + 5;
+    curY = doc.lastAutoTable.finalY + 6;
 
     if (specialNotes) {
       drawNarrativeBox(`CATATAN KHUSUS LAPANGAN (SUPERADMIN NOTES): ${specialNotes}`, [217, 119, 6]);
     }
 
     // ------------------------------------------
-    // BAB V. LAMPIRAN RINCIAN TRANSAKSI HARIAN PER TANGKI (OPSIONAL)
+    // BAB V. LAMPIRAN RINCIAN TRANSAKSI HARIAN PER TANGKI (SMART FLOW)
     // ------------------------------------------
     if (includeDailyLedger && d.storageLedgers && d.storageLedgers.length > 0) {
-      doc.addPage();
-      curY = 14;
+      ensureSpace(55);
       drawChapterHeader(`BAB V. LAMPIRAN RINCIAN MUTASI & TRANSAKSI HARIAN PER TANGKI (SITE ${m.site})`);
 
       d.storageLedgers.forEach((st, sIdx) => {
         const letter = String.fromCharCode(65 + sIdx);
-        ensureSpace(20);
+        ensureSpace(34);
 
         doc.setFillColor(15, 23, 42);
         doc.rect(marginX, curY, contentWidth, 6, 'F');
@@ -1379,14 +1439,17 @@ async function printExecutiveReportPDF() {
         doc.text(`Total Masuk: +${st.totalIn.toLocaleString('id-ID')} L | Total Keluar: -${st.totalOut.toLocaleString('id-ID')} L`, pageWidth - marginX - 2.5, curY + 4.2, { align: 'right' });
         curY += 6;
 
-        const ledgerRows = st.rows.map(rw => [
-          rw.tanggal,
-          rw.docOrUnit,
-          `${rw.partNumber} — ${rw.partDesc}`,
-          rw.qtyIn > 0 ? `+${rw.qtyIn.toLocaleString('id-ID')}` : '-',
-          rw.qtyOut > 0 ? `-${rw.qtyOut.toLocaleString('id-ID')}` : '-',
-          rw.remarks
-        ]);
+        const ledgerRows = st.rows.map(rw => {
+          const cleanRemarks = String(rw.remarks || '').replace(/^(\[RETURN UNIT\]\s*)+/i, '[RETURN UNIT] ');
+          return [
+            rw.tanggal,
+            rw.docOrUnit,
+            `${rw.partNumber} — ${rw.partDesc}`,
+            rw.qtyIn > 0 ? `+${rw.qtyIn.toLocaleString('id-ID')}` : '-',
+            rw.qtyOut > 0 ? `-${rw.qtyOut.toLocaleString('id-ID')}` : '-',
+            cleanRemarks
+          ];
+        });
 
         ledgerRows.push([
           { content: `SUBTOTAL PERGERAKAN (${st.storageId}):`, colSpan: 3, styles: { fontStyle: 'bold', fillColor: [241, 245, 249], halign: 'right' } },
@@ -1494,9 +1557,9 @@ async function printExecutiveReportPDF() {
       doc.text(`Halaman ${p} dari ${totalPages}`, pageWidth - marginX, fy, { align: 'right' });
     }
 
-    // Nama File Otomatis Sesuai Format: LOG_Monthly__Report_TTLP_Nov_2026.pdf
+    // Nama File Otomatis Satu Garis Bawah: LOG_Monthly_Report_TTLP_Nov_2026.pdf
     const modePrefix = m.reportMode === 'WEEKLY' ? 'Weekly' : 'Monthly';
-    const fileName = `LOG_${modePrefix}__Report_${m.site}_${m.refMonth}_${m.refYear}.pdf`;
+    const fileName = `LOG_${modePrefix}_Report_${m.site}_${m.refMonth}_${m.refYear}.pdf`;
     doc.save(fileName);
 
     if (statusLbl) {
