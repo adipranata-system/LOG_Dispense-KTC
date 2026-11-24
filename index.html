@@ -974,10 +974,34 @@
                 
                 <div id="panelTargetInternal">
                   <label class="form-label-sm">To Storage (Destination) <span class="text-rose-500">*</span></label>
-                  <select id="trfToStorage" required class="form-input-sm font-semibold">
+                  <select id="trfToStorage" class="form-input-sm font-semibold">
                     <option value="">-- Select Destination --</option>
                   </select>
                 </div>
+
+                <div id="panelTargetSite" class="hidden">
+                  <label class="form-label-sm">Destination Project Site <span class="text-rose-500">*</span></label>
+                  <select id="trfToSite" onchange="handleToSiteChange()" class="form-input-sm font-bold text-amber-700">
+                    <option value="">-- Select Destination Site --</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label class="form-label-sm">Transfer Date <span class="text-rose-500">*</span></label>
+                  <input type="date" id="trfDate" required class="form-input-sm">
+                </div>
+                <div id="panelTrfMR">
+                  <label class="form-label-sm">Material Request (MR) No. <span class="text-rose-500">*</span></label>
+                  <input type="text" id="trfMRNo" placeholder="e.g. MR-2026-11-008" class="form-input-sm uppercase font-semibold font-mono">
+                </div>
+              </div>
+
+              <div id="panelTrfPetugas">
+                <label class="form-label-sm">Dispense Operator / Technician <span class="text-rose-500">*</span></label>
+                <input type="text" id="trfPetugas" placeholder="Mandatory: Operator / Technician name..." class="form-input-sm uppercase font-semibold">
+              </div>
 
                 <div id="panelTargetSite" class="hidden">
                   <label class="form-label-sm">Destination Project Site <span class="text-rose-500">*</span></label>
@@ -1301,7 +1325,7 @@
                 </div>
                 <div>
                   <label class="form-label-sm">Executor / Technician <span class="text-rose-500">*</span></label>
-                  <input type="text" id="retPetugas" required placeholder="Mandatory: Name" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('retAlasan').focus();}" class="form-input-sm uppercase font-semibold">
+                  <input type="text" id="retPetugas" placeholder="Mandatory: Name" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('retAlasan').focus();}" class="form-input-sm uppercase font-semibold">
                 </div>
               </div>
 
