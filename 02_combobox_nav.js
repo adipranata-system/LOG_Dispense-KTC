@@ -349,7 +349,10 @@ function selectPartInItem(partNum) {
   document.getElementById('partInSearchInput').value = `${p.partNumber} — ${p.partDesc || ''}`;
   document.getElementById('labelPartInDesc').innerText = p.partDesc || '-';
   if (p.defaultPrice !== undefined && p.defaultPrice !== null) {
-    document.getElementById('inHarga').value = Number(p.defaultPrice).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    document.getElementById('inHarga').value = Number(p.defaultPrice).toLocaleString('id-ID', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
   }
   document.getElementById('btnClearPartIn').classList.remove('hidden');
   document.getElementById('partInDropdownList').classList.add('hidden');
@@ -593,7 +596,12 @@ function selectRetPartItem(partNum) {
   document.getElementById('retPart').value = p.partNumber;
   document.getElementById('retPartSearchInput').value = `${p.partNumber} — ${p.partDesc || ''}`;
   document.getElementById('labelRetPartDesc').innerText = p.partDesc || '-';
-  if (p.defaultPrice) document.getElementById('retHarga').value = Number(p.defaultPrice).toLocaleString('en-US');
+  if (p.defaultPrice !== undefined && p.defaultPrice !== null) {
+    document.getElementById('retHarga').value = Number(p.defaultPrice).toLocaleString('id-ID', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
   document.getElementById('btnClearRetPart').classList.remove('hidden');
   document.getElementById('retPartDropdownList').classList.add('hidden');
   triggerCheckReturnStock();
