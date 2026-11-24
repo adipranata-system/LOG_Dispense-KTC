@@ -340,7 +340,9 @@ async function fetchInitialMasterData() {
     populateSelect('storageFilterOut', liveStorages, 'storageId', 'storageName', 'All Storage & Dispenser');
     populateSelect('storageFilterIn', liveStorages, 'storageId', 'storageName', 'All Receiving Storages');
 
-    updateTransferTargetOptions();
+    if (typeof updateTransferTargetOptions === 'function') {
+      updateTransferTargetOptions();
+    }
     lockInStorageToWarehouse(liveStorages);
 
     renderUnitDropdownItems(liveUnits);
