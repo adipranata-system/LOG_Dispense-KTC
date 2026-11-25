@@ -334,14 +334,15 @@ function renderExecutiveReportPaper() {
     : 'LAPORAN EKSEKUTIF MANAJEMEN LOGISTIK PELUMAS (MONTHLY MANAGEMENT AUDIT)';
 
   const statusBadgeHtml = m.periodStatus === 'FINAL_LOCKED'
-    ? '<span class="px-2.5 py-0.5 rounded bg-emerald-100 text-emerald-900 font-extrabold text-[10px] border border-emerald-300">FINAL LOCKED (CLOSED)</span>'
-    : '<span class="px-2.5 py-0.5 rounded bg-amber-100 text-amber-900 font-extrabold text-[10px] border border-amber-300">DRAFT / RUNNING</span>';
-
-  // --- BAB II: DIPISAH PER TANGKI TANPA KOLOM "NO" ---
+  // --- BAB II: DIPISAH PER TANGKI TANPA KOLOM "NO" (SEMBUNYIKAN BARIS MUTASI 0) ---
   let bab2TanksHtml = '';
   if (d.stockBalance && d.stockBalance.length > 0) {
     const tankGroupsMap = {};
     d.stockBalance.forEach(r => {
+      // Sembunyikan baris yang seluruh nilai saldo dan mutasinya 0
+      const hasActivity = (Number(r.qtyAwal) !== 0 || Number(r.qtyMasuk) !== 0 || Number(r.qtyKeluar) !== 0 || Number(r.qtyAkhirBuku) !== 0 || Number(r.soundingQty) !== 0);
+      if (!hasActivity) return;
+
       const stKey = r.storageId || 'UNKNOWN';
       if (!tankGroupsMap[stKey]) {
         const metaSt = (d.storageLedgers || []).find(s => s.storageId === stKey);
@@ -374,11 +375,12 @@ function renderExecutiveReportPaper() {
     bab2TanksHtml = tankGroups.map((grp, gIdx) => {
       const rowsHtml = grp.rows.map(r => {
         const diffCls = Math.abs(r.selisih) <= 10 ? 'text-emerald-700 font-bold' : 'text-rose-700 font-black';
+        const shortDesc = formatShortPartDesc_(r.partDesc, 44);
         return `
           <tr class="border-b border-slate-200 even:bg-slate-50/60 avoid-page-break">
             <td class="py-1.5 px-2">
               <span class="font-bold font-mono text-slate-900">${r.partNumber}</span>
-              <span class="text-slate-500 block text-[9px] leading-tight">${r.partDesc}</span>
+              <span class="text-slate-500 text-[9px] ml-1.5">${shortDesc}</span>
             </td>
             <td class="py-1.5 px-2 text-right font-mono">${r.qtyAwal.toLocaleString('id-ID')}</td>
             <td class="py-1.5 px-2 text-right font-mono text-blue-700">+${r.qtyMasuk.toLocaleString('id-ID')}</td>
@@ -545,13 +547,14 @@ function renderExecutiveReportPaper() {
           const letter = String.fromCharCode(65 + sIdx);
           const rowsHtml = st.rows.map(rw => {
             const cleanRemarks = String(rw.remarks || '').replace(/^(\[RETURN UNIT\]\s*)+/i, '[RETURN UNIT] ');
+            const shortDesc = formatShortPartDesc_(rw.partDesc, 34);
             return `
             <tr class="border-b border-slate-200/80 even:bg-slate-50/50 avoid-page-break">
               <td class="py-1 px-2 font-mono whitespace-nowrap text-slate-600">${rw.tanggal}</td>
               <td class="py-1 px-2 font-mono font-semibold text-slate-800 whitespace-nowrap">${rw.docOrUnit}</td>
-              <td class="py-1 px-2">
+              <td class="py-1 px-2 whitespace-nowrap">
                 <span class="font-mono font-bold text-slate-900">${rw.partNumber}</span>
-                <span class="text-slate-500 text-[9px] ml-1">${rw.partDesc}</span>
+                <span class="text-slate-500 text-[9px] ml-1">${shortDesc}</span>
               </td>
               <td class="py-1 px-2 text-right font-mono font-bold text-blue-700">${rw.qtyIn > 0 ? '+' + rw.qtyIn.toLocaleString('id-ID') : '-'}</td>
               <td class="py-1 px-2 text-right font-mono font-bold text-amber-800">${rw.qtyOut > 0 ? '-' + rw.qtyOut.toLocaleString('id-ID') : '-'}</td>
@@ -676,7 +679,7 @@ function renderExecutiveReportPaper() {
           <div class="p-3 rounded-xl border border-slate-200 bg-white">
             <span class="text-[9.5px] font-bold uppercase text-slate-400 block">Saldo Akhir Fisik (Sounding)</span>
             <span class="text-base font-black font-mono text-emerald-700">${k.totalSoundingQty.toLocaleString('id-ID')} L/Kg</span>
-            <span class="text-[10px] text-slate-500 block mt-0.5">Aset: Rp ${k.totalBookEndingValue.toLocaleString('id-ID')}</span>
+            <span class="text-[10px] text-slate-500 block mt-0.5">Aset: Rp ${k.totalBookEndingValue.toLocaleString('id-ID')}${Number(k.daysOfSupply) > 0 ? ` • Ketahanan: ±${Number(k.daysOfSupply).toLocaleString('id-ID')} hari` : ''}</span>
           </div>
         </div>
       </div>
@@ -849,8 +852,18 @@ function renderExecutiveReportPaper() {
 }
 
 // ==========================================
-// 6. DIRECT PDF GENERATOR (A4 LANDSCAPE - ZERO URL & MPS FOOTER)
+// 6. DIRECT PDF GENERATOR (A4 LANDSCAPE - KOMPRESI OPTIMAL < 500 KB)
 // ==========================================
+function formatShortPartDesc_(desc, maxLen = 36) {
+  const clean = String(desc || '')
+    .replace(/\s*\([^)]*\)/g, '')
+    .replace(/\s*\/.*$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (clean.length <= maxLen) return clean;
+  return clean.substring(0, maxLen - 1).trim() + '…';
+}
+
 function loadLogoDataUrl_(src) {
   return new Promise(resolve => {
     try {
@@ -858,14 +871,22 @@ function loadLogoDataUrl_(src) {
       img.crossOrigin = 'Anonymous';
       img.onload = function () {
         try {
+          const origW = img.naturalWidth || 200;
+          const origH = img.naturalHeight || 80;
+          const ratio = origW / origH;
+
+          // Skala kanvas ke resolusi cetak 300 DPI (maks lebar 360px) agar tajam namun sangat ringan
+          const targetW = Math.min(360, origW);
+          const targetH = Math.max(1, Math.round(targetW / ratio));
+
           const canvas = document.createElement('canvas');
-          canvas.width = img.naturalWidth || 200;
-          canvas.height = img.naturalHeight || 80;
+          canvas.width = targetW;
+          canvas.height = targetH;
           const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
+          ctx.drawImage(img, 0, 0, targetW, targetH);
           resolve({
             dataUrl: canvas.toDataURL('image/png'),
-            ratio: (img.naturalWidth && img.naturalHeight) ? (img.naturalWidth / img.naturalHeight) : 2.4
+            ratio: ratio
           });
         } catch (e) {
           resolve(null);
@@ -906,7 +927,8 @@ async function printExecutiveReportPDF() {
     const doc = new jsPDF({
       orientation: 'landscape',
       unit: 'mm',
-      format: 'a4'
+      format: 'a4',
+      compress: true
     });
 
     const d = execReportData;
@@ -971,7 +993,7 @@ async function printExecutiveReportPDF() {
     if (logoObj && logoObj.dataUrl) {
       const logoH = 11.5;
       const logoW = Math.min(34, logoH * logoObj.ratio);
-      doc.addImage(logoObj.dataUrl, 'PNG', marginX, curY - 1.5, logoW, logoH);
+      doc.addImage(logoObj.dataUrl, 'PNG', marginX, curY - 1.5, logoW, logoH, 'KTC_LOGO', 'FAST');
       headerTextX = marginX + logoW + 3.5;
     }
 
@@ -1038,7 +1060,7 @@ async function printExecutiveReportPDF() {
       {
         label: 'SALDO AKHIR FISIK (SOUNDING)',
         value: `${k.totalSoundingQty.toLocaleString('id-ID')} L/Kg`,
-        sub: `Aset: Rp ${k.totalBookEndingValue.toLocaleString('id-ID')}`,
+        sub: `Aset: Rp ${k.totalBookEndingValue.toLocaleString('id-ID')}${Number(k.daysOfSupply) > 0 ? ` • ±${Number(k.daysOfSupply).toLocaleString('id-ID')} hari` : ''}`,
         rgb: [4, 120, 87]
       }
     ];
@@ -1075,6 +1097,10 @@ async function printExecutiveReportPDF() {
     if (d.stockBalance && d.stockBalance.length > 0) {
       const tankGroupsMap = {};
       d.stockBalance.forEach(r => {
+        // Sembunyikan baris yang seluruh nilai saldo dan mutasinya 0
+        const hasActivity = (Number(r.qtyAwal) !== 0 || Number(r.qtyMasuk) !== 0 || Number(r.qtyKeluar) !== 0 || Number(r.qtyAkhirBuku) !== 0 || Number(r.soundingQty) !== 0);
+        if (!hasActivity) return;
+
         const stKey = r.storageId || 'UNKNOWN';
         if (!tankGroupsMap[stKey]) {
           const metaSt = (d.storageLedgers || []).find(s => s.storageId === stKey);
@@ -1118,7 +1144,7 @@ async function printExecutiveReportPDF() {
         curY += 6;
 
         const bodyRows = grp.rows.map(r => [
-          `${r.partNumber}\n${r.partDesc}`,
+          `${r.partNumber} — ${formatShortPartDesc_(r.partDesc, 38)}`,
           r.qtyAwal.toLocaleString('id-ID'),
           `+${r.qtyMasuk.toLocaleString('id-ID')}`,
           `-${r.qtyKeluar.toLocaleString('id-ID')}`,
@@ -1444,7 +1470,7 @@ async function printExecutiveReportPDF() {
           return [
             rw.tanggal,
             rw.docOrUnit,
-            `${rw.partNumber} — ${rw.partDesc}`,
+            `${rw.partNumber} — ${formatShortPartDesc_(rw.partDesc, 32)}`,
             rw.qtyIn > 0 ? `+${rw.qtyIn.toLocaleString('id-ID')}` : '-',
             rw.qtyOut > 0 ? `-${rw.qtyOut.toLocaleString('id-ID')}` : '-',
             cleanRemarks
