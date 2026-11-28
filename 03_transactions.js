@@ -199,14 +199,59 @@ async function submitPartOutData() {
   }
 }
 
-async function fetchRecentPartOut() {
+let dispenseLogRangeMode = '7D';
+
+function handleDispenseRangeChange(newMode) {
+  const mode = String(newMode || '7D').trim().toUpperCase();
+  dispenseLogRangeMode = mode;
+
+  const sel = document.getElementById('rangeFilterOut');
+  if (sel && sel.value !== mode) sel.value = mode;
+
+  fetchRecentPartOut(mode);
+}
+
+function updateDispenseRangeUI(mode, count) {
+  const subEl = document.getElementById('lblDispenseLogSubtitle');
+  const footerTextEl = document.getElementById('lblDispenseFooterText');
+  const switchBtnEl = document.getElementById('btnSwitchDispenseMTD');
+
+  if (mode === 'MTD') {
+    if (subEl) subEl.innerText = `Showing all ${count} operational records for current month (MTD)`;
+    if (footerTextEl) footerTextEl.innerText = `Displaying complete Month-to-Date (MTD) records (${count} entries).`;
+    if (switchBtnEl) {
+      switchBtnEl.setAttribute('onclick', "handleDispenseRangeChange('7D')");
+      switchBtnEl.innerHTML = '<i class="fa-solid fa-bolt text-[10px]"></i><span>Back to Last 7 Days</span>';
+    }
+  } else {
+    if (subEl) subEl.innerText = 'Showing last 7 days operational records for fast loading';
+    if (footerTextEl) footerTextEl.innerText = 'Showing last 7 days of records. Need to view earlier transactions this month?';
+    if (switchBtnEl) {
+      switchBtnEl.setAttribute('onclick', "handleDispenseRangeChange('MTD')");
+      switchBtnEl.innerHTML = '<i class="fa-solid fa-calendar-days text-[10px]"></i><span>Load Full Month (MTD)</span>';
+    }
+  }
+}
+
+async function fetchRecentPartOut(overrideMode) {
   const tbody = document.getElementById('tableRecentOut');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading dispense log...</td></tr>';
-  const res = await callBackend('GET_RECENT_OUT', { site: currentSite });
+
+  const sel = document.getElementById('rangeFilterOut');
+  const mode = String(overrideMode || (sel ? sel.value : dispenseLogRangeMode) || '7D').trim().toUpperCase();
+  dispenseLogRangeMode = mode;
+  if (sel && sel.value !== mode) sel.value = mode;
+
+  const loadingText = mode === 'MTD'
+    ? 'Loading full Month-to-Date (MTD) dispense log...'
+    : 'Loading last 7 days dispense log...';
+  tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>${loadingText}</td></tr>`;
+
+  const res = await callBackend('GET_RECENT_OUT', { site: currentSite, rangeMode: mode });
   if (res.success && res.data) {
     rawRecentOutData = res.data;
-    renderRecentOutRows(rawRecentOutData);
+    updateDispenseRangeUI(mode, rawRecentOutData.length);
+    filterRecentOutTable();
   } else {
     tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-slate-400">Failed to load dispense records.</td></tr>';
   }
