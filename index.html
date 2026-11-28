@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LOG Dispense System (LDS) - PT.KTC Coal Mining & Energy</title>
+  <title>LOG Dispense Management System - PT.KTC Coal Mining & Energy</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -221,7 +221,7 @@
           <span>Encrypted Enterprise Core Repository • Secure Cloud Architecture</span>
         </p>
         <div class="text-[10px] text-slate-500 leading-relaxed pt-1">
-          <p class="font-bold text-slate-700">LOG Dispense System (LDS) — Version 3.5 Enterprise</p>
+          <p class="font-bold text-slate-700">LOG Dispense Management System — Version 3.5 Enterprise</p>
           <p>Designed & Engineered by <a href="https://www.linkedin.com/in/adi-pranata/" target="_blank" rel="noopener noreferrer" class="font-extrabold text-amber-800 hover:text-amber-600 hover:underline inline-flex items-center gap-1 transition-colors">Adi Pranata <i class="fa-brands fa-linkedin text-[11px] text-[#0A66C2]"></i></a></p>
           <p class="text-[9px] text-slate-400 mt-1">
             Copyright &copy; 2026 PT.KTC Coal Mining & Energy. All Rights Reserved.<br>
@@ -257,7 +257,7 @@
                 <span class="font-black text-xs sm:text-sm tracking-tight text-white block">PT.KTC COAL MINING & ENERGY</span>
                 <span class="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 text-[9px] font-bold border border-amber-500/30 font-mono">v3.5</span>
               </div>
-              <span class="text-[10px] text-slate-400 font-medium tracking-wide block">LOG Dispense System (LDS)</span>
+              <span class="text-[10px] text-slate-400 font-medium tracking-wide block">LOG Dispense Management System</span>
             </div>
           </div>
 
@@ -635,9 +635,13 @@
             <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5 mb-2.5">
               <div>
                 <h3 class="text-sm sm:text-base font-extrabold text-slate-900">Monthly Dispense Log</h3>
-                <p class="text-[10px] text-slate-400">Chronological transaction record for current operational month</p>
+                <p id="lblDispenseLogSubtitle" class="text-[10px] text-slate-400">Showing last 7 days operational records for fast loading</p>
               </div>
               <div class="flex items-center gap-1.5">
+                <select id="rangeFilterOut" onchange="handleDispenseRangeChange(this.value)" title="Select transaction display window" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer">
+                  <option value="7D" selected>Last 7 Days</option>
+                  <option value="MTD">Full Month (MTD)</option>
+                </select>
                 <button onclick="downloadCSV('OUT')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
                   <i class="fa-solid fa-file-excel text-emerald-600"></i>
                   <span>Export CSV</span>
@@ -692,237 +696,14 @@
                 <tbody id="tableRecentOut" class="divide-y divide-slate-100"></tbody>
               </table>
             </div>
-          </div>
 
-        </div>
-      </section>
-
-      <!-- TAB 2: INBOUND RECEIVING (LOG IN) -->
-      <section id="tab-in" class="tab-pane hidden">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-          
-          <div class="lg:col-span-5 xl:col-span-4 bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-200/80">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-3.5">
-              <div>
-                <h2 class="text-sm sm:text-base font-extrabold text-slate-900">Inbound Lubricant Receiving</h2>
-                <p class="text-[11px] text-slate-400">Logistics replenishment from Vendor PO or Inter-Site Transfer</p>
-              </div>
-              <span class="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center text-sm shadow-sm">
-                <i class="fa-solid fa-truck-ramp-box"></i>
-              </span>
-            </div>
-
-            <div class="mb-3 p-2 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between text-xs">
-              <span class="font-bold text-slate-700">Supply Origin:</span>
-              <div class="flex items-center gap-3">
-                <label class="flex items-center gap-1.5 cursor-pointer font-semibold">
-                  <input type="radio" name="inSourceType" value="VENDOR" checked onchange="toggleInSourceType('VENDOR')" class="text-blue-600 focus:ring-blue-500">
-                  <span>Vendor / PO</span>
-                </label>
-                <label class="flex items-center gap-1.5 cursor-pointer font-semibold text-amber-800">
-                  <input type="radio" name="inSourceType" value="TRANSFER_SJ" onchange="toggleInSourceType('TRANSFER_SJ')" class="text-amber-600 focus:ring-amber-500">
-                  <span>Inter-Site Transfer</span>
-                </label>
-              </div>
-            </div>
-
-            <!-- Inter-Site Waybill Lookup Panel -->
-            <div id="panelSJLookup" class="hidden mb-3 p-2.5 bg-amber-50/80 border border-amber-200 rounded-2xl">
-              <label class="form-label-sm text-amber-950">Enter Inbound Waybill / SJ Number:</label>
-              <div class="flex items-center gap-1.5 mt-1">
-                <input type="text" id="lookupSJInput" placeholder="e.g. SJ/TNPN-TTLP/..." onkeydown="if(event.key==='Enter'){event.preventDefault(); triggerSJAutoFill();}" class="form-input-sm uppercase font-bold text-amber-950 border-amber-300 font-mono">
-                <button type="button" id="btnFetchCargo" onclick="triggerSJAutoFill()" class="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs whitespace-nowrap shadow-sm">
-                  Fetch Cargo
-                </button>
-              </div>
-              <p id="lblSJLookupStatus" class="text-[10px] text-amber-900 mt-1 italic hidden"></p>
-            </div>
-
-            <form id="formPartIn" onsubmit="event.preventDefault(); submitPartInData();" class="space-y-3 text-xs">
-              
-              <!-- ZONE A: DOCUMENT HEADER -->
-              <div class="bg-slate-50/90 p-3 rounded-2xl border border-slate-200 space-y-2.5">
-                <div class="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5 pb-1 border-b border-slate-200/80">
-                  <i class="fa-solid fa-file-invoice text-blue-600"></i> Document Identity (DO / PO Waybill)
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <label class="form-label-sm">DO / Waybill No. <span class="text-rose-500">*</span></label>
-                    <input type="text" id="inNoDok" required placeholder="DO/SJ-..." onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('supplierSearchInput').focus();}" class="form-input-sm uppercase font-semibold font-mono">
-                  </div>
-                  <div>
-                    <label class="form-label-sm">Receiving Date <span class="text-rose-500">*</span></label>
-                    <input type="date" id="inDate" required class="form-input-sm">
-                  </div>
-                </div>
-
-                <!-- Searchable Combobox Supplier (m_supplier) -->
-                <div class="relative" id="containerInSupplier">
-                  <label class="form-label-sm">Supplier / Vendor Origin <span class="text-rose-500">*</span></label>
-                  <input type="hidden" id="inSupplierCode" required>
-                  <input type="hidden" id="inSupplierName" required>
-                  
-                  <div class="relative">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 text-slate-400">
-                      <i class="fa-solid fa-building-user text-xs"></i>
-                    </span>
-                    <input type="text" id="supplierSearchInput" autocomplete="off" placeholder="Select Vendor from Master m_supplier... (↑ ↓ Enter)"
-                      onfocus="openSupplierDropdown()" oninput="filterSupplierDropdown(this.value)" onkeydown="handleSupplierKeydown(event)"
-                      class="form-input-sm pl-8 pr-7 font-semibold text-slate-800">
-                    <button type="button" onclick="clearSupplierSelection()" id="btnClearSupplier" class="hidden absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400 hover:text-slate-600">
-                      <i class="fa-solid fa-xmark text-xs"></i>
-                    </button>
-                  </div>
-
-                  <div id="supplierDropdownList" class="hidden absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100"></div>
-                  <div class="flex justify-between items-center mt-0.5 text-[10px] px-1 text-slate-400">
-                    <span id="lblSelectedSupplierDesc">Verified Master: <b>-</b></span>
-                  </div>
-                </div>
-
-                <div>
-                  <label class="form-label-sm">Receiving Storage (Store Tank) <span class="text-rose-500">*</span></label>
-                  <div class="relative">
-                    <select id="inStorage" required class="form-input-sm bg-slate-100 font-bold text-slate-700 cursor-not-allowed appearance-none" style="pointer-events: none;">
-                      <option value="">Locked to Site Store Warehouse</option>
-                    </select>
-                    <span class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400 pointer-events-none">
-                      <i class="fa-solid fa-lock text-xs"></i>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- ZONE B: LUBRICANT ITEM DETAIL -->
-              <div id="containerInItemDetailSection" class="bg-blue-50/40 p-3 rounded-2xl border border-blue-100 space-y-2.5">
-                <div class="text-[10px] font-black uppercase tracking-wider text-blue-900 flex items-center justify-between pb-1 border-b border-blue-200/60">
-                  <span class="flex items-center gap-1.5"><i class="fa-solid fa-oil-can text-blue-600"></i> Lubricant Inbound Items</span>
-                  <span class="text-[9px] text-blue-600 font-semibold normal-case">Single item or multi-part batch</span>
-                </div>
-
-                <div class="relative" id="containerInPartSearch">
-                  <label class="form-label-sm">Lubricant Item / Part Number <span class="text-rose-500">*</span></label>
-                  <input type="hidden" id="inPart">
-                  
-                  <div class="relative">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 text-slate-400">
-                      <i class="fa-solid fa-magnifying-glass text-xs"></i>
-                    </span>
-                    <input type="text" id="partInSearchInput" autocomplete="off" placeholder="Search Inbound Part / Product... (↑ ↓ Enter)"
-                      onfocus="openPartInDropdown()" oninput="filterPartInDropdown(this.value)" onkeydown="handlePartInKeydown(event)"
-                      class="form-input-sm pl-8 pr-7 font-semibold text-slate-800">
-                    <button type="button" onclick="clearPartInSelection()" id="btnClearPartIn" class="hidden absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400 hover:text-slate-600">
-                      <i class="fa-solid fa-xmark text-xs"></i>
-                    </button>
-                  </div>
-
-                  <div id="partInDropdownList" class="hidden absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100"></div>
-
-                  <div class="flex justify-between items-center mt-0.5 text-[10px] px-1">
-                    <span id="labelPartInDesc" class="text-slate-500 font-medium truncate max-w-[280px]">-</span>
-                  </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-2.5" id="containerInQtyDoc">
-                  <div>
-                    <label class="form-label-sm">Received Qty (L/kg) <span class="text-rose-500">*</span></label>
-                    <div class="flex items-center gap-1.5">
-                      <input type="number" step="1" min="1" id="inQty" placeholder="0" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('inHarga').focus();}" class="form-input-sm font-mono font-bold text-slate-900">
-                      <button type="button" onclick="addOliToVendorInCart()" title="Add to Delivery Order Batch" class="px-2.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-[11px] whitespace-nowrap transition-all shadow-sm">
-                        + Add Item
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <label class="form-label-sm">Unit Price (IDR/L Or Kg)</label>
-                    <input type="text" inputmode="decimal" id="inHarga" placeholder="0.00" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('btnSubmitIn').click();}" class="form-input-sm font-mono">
-                  </div>
-                </div>
-              </div>
-
-              <!-- Vendor Inbound Batch Cart -->
-              <div id="vendorInCartContainer" class="hidden bg-blue-50/70 border border-blue-200 rounded-2xl p-2.5">
-                <div class="flex items-center justify-between mb-1.5">
-                  <span class="text-[11px] font-black text-blue-900 flex items-center gap-1">
-                    <i class="fa-solid fa-boxes-stacked text-blue-600"></i> Delivery Order Batch (<span id="vendorCartCount">0</span>)
-                  </span>
-                  <button type="button" onclick="clearVendorInCart()" class="text-[10px] text-rose-600 hover:underline font-bold">Clear</button>
-                </div>
-                <div id="vendorInCartList" class="space-y-1 max-h-28 overflow-y-auto pr-1"></div>
-              </div>
-
-              <!-- Inter-Site Transfer Inbound Preview -->
-              <div id="inboundCartContainer" class="hidden bg-amber-50/70 border border-amber-200 rounded-2xl p-2.5">
-                <div class="flex items-center justify-between mb-1.5">
-                  <span class="text-[11px] font-black text-amber-950 flex items-center gap-1">
-                    <i class="fa-solid fa-boxes-packing text-amber-700"></i> Inbound Transfer Items (<span id="inboundCartCount">0</span>)
-                  </span>
-                </div>
-                <div id="inboundCartList" class="space-y-1 max-h-28 overflow-y-auto pr-1"></div>
-              </div>
-
-              <button type="submit" id="btnSubmitIn" class="w-full py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-xl shadow-md shadow-blue-500/25 transition-all flex items-center justify-center gap-2 mt-2 text-xs active:scale-[0.99]">
-                <i class="fa-solid fa-circle-plus"></i>
-                <span id="lblBtnSubmitIn">Submit Inbound Receiving</span>
+            <!-- Smart Footer Hint (English) -->
+            <div id="footerHintRecentOut" class="mt-2.5 pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+              <span id="lblDispenseFooterText">Showing last 7 days of records. Need to view earlier transactions this month?</span>
+              <button type="button" id="btnSwitchDispenseMTD" onclick="handleDispenseRangeChange('MTD')" class="font-extrabold text-amber-700 hover:text-amber-800 hover:underline inline-flex items-center gap-1 transition-colors">
+                <i class="fa-solid fa-calendar-days text-[10px]"></i>
+                <span>Load Full Month (MTD)</span>
               </button>
-            </form>
-          </div>
-
-          <!-- Inbound History Table Right -->
-          <div class="lg:col-span-7 xl:col-span-8 bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-200/80">
-            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5 mb-2.5">
-              <div>
-                <h3 class="text-sm sm:text-base font-extrabold text-slate-900">Monthly Inbound Receiving Log</h3>
-                <p class="text-[10px] text-slate-400">Inventory replenishment records arranged by waybill sequence</p>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <button onclick="downloadCSV('IN')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
-                  <i class="fa-solid fa-file-excel text-emerald-600"></i>
-                  <span>Export CSV</span>
-                </button>
-                <button onclick="fetchRecentPartIn()" title="Refresh inbound data" class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm">
-                  <i class="fa-solid fa-rotate text-[11px]"></i>
-                  <span>Refresh</span>
-                </button>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 mb-2.5">
-              <div class="sm:col-span-5 relative">
-                <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 text-slate-400 text-xs">
-                  <i class="fa-solid fa-magnifying-glass"></i>
-                </span>
-                <input type="text" id="searchFilterIn" oninput="filterRecentInTable()" placeholder="Search DO, vendor, storage, or item..." class="form-input-sm pl-8">
-              </div>
-              <div class="sm:col-span-4">
-                <select id="storageFilterIn" onchange="filterRecentInTable()" class="form-input-sm font-semibold">
-                  <option value="">All Receiving Storages</option>
-                </select>
-              </div>
-              <div class="sm:col-span-3">
-                <select id="sourceFilterIn" onchange="filterRecentInTable()" class="form-input-sm font-semibold">
-                  <option value="">All Supply Sources</option>
-                  <option value="VENDOR">Vendor / PO Supplier</option>
-                  <option value="TRANSFER">Inter-Site Transfer</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="overflow-x-auto max-h-[480px] overflow-y-auto border border-slate-100 rounded-2xl">
-              <table class="w-full text-left text-xs min-w-[720px]">
-                <thead class="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[10px] sticky top-0 z-10 shadow-sm">
-                  <tr>
-                    <th class="py-2.5 px-3 bg-slate-50 whitespace-nowrap">Date</th>
-                    <th class="py-2.5 px-3 bg-slate-50 whitespace-nowrap">DO / Waybill No.</th>
-                    <th class="py-2.5 px-3 bg-slate-50">Supplier / Vendor Origin</th>
-                    <th class="py-2.5 px-3 bg-slate-50 whitespace-nowrap">Target Storage</th>
-                    <th class="py-2.5 px-3 bg-slate-50">Lubricant Item</th>
-                    <th class="py-2.5 px-3 bg-slate-50 text-right whitespace-nowrap">Qty & Unit Price</th>
-                  </tr>
-                </thead>
-                <tbody id="tableRecentIn" class="divide-y divide-slate-100"></tbody>
-              </table>
             </div>
           </div>
 
@@ -1704,7 +1485,7 @@
         <div class="flex items-center gap-2">
           <span class="font-bold text-slate-800">PT.KTC Coal Mining & Energy</span>
           <span class="text-slate-300">•</span>
-          <span>LOG Dispense System (LDS) v3.5 Enterprise</span>
+          <span>LOG Dispense Management System v3.5 Enterprise</span>
         </div>
         <div class="flex items-center gap-3">
           <span>Architected & Engineered by <a href="https://www.linkedin.com/in/adi-pranata/" target="_blank" rel="noopener noreferrer" class="text-amber-800 font-bold hover:text-amber-600 hover:underline inline-flex items-center gap-1 transition-colors">Adi Pranata <i class="fa-brands fa-linkedin text-[11px] text-[#0A66C2]"></i></a></span>
